@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "library(shiny)\n\nstops <- c(\"KR_terminal\", \"UHC\", \"Central_Library\", \"Kent_RIdge_MRT\", \"COM2\", \"Museum\", \"BIZ2\", \"Opp_HSSML\", \"LT13\", \"Ventus\", \"PGP_Hse_12\", \"Computer_Centre\", \"PGP_Hse_14_15\", \"PGP_Hse_7\", \"YIH\", \"Opp_YIH\", \"UHall\", \"Opp_UHall\", \"PGP\", \"Raffles_Hall\", \"EA\", \"PGPR\", \"LT29\", \"S17\", \"Opp_Kent_Ridge_MRT\")\ntimeIntervals <- c(\"Monthly\", \"Weekly\", \"Daily\", \"Hourly\")\n\nui <- fluidPage(\n  titlePanel(div(h1(\"The Route Ranger\"), style=\"color:red\")),\n  sidebarLayout(\n    sidebarPanel(selectInput(\"busStop\", \"Select Bus Stop\", sort(stops), selected=\"COM2\"),\n                 selectInput(\"timeFrame\", \"Select Time Frame\", timeIntervals, selected=\"Daily\"),\n                 conditionalPanel(\"input.timeFrame == 'Hourly'\", dateInput(\"startDate1\", \"Choose a Day\")),\n                 conditionalPanel(\"input.timeFrame != 'Hourly'\", dateInput(\"startDate2\", \"Starting Date\"), dateInput(\"endDate\", \"Ending Date\")),\n                 actionButton(\"genResult\" , \"Show Stop Usage!\")\n                 ),\n    mainPanel(div(tags$label(\"Number of people boarding\"), textOutput(\"boarding\"),\n              tags$label(\"Number of people aighting\"), textOutput(\"alighting\"), style=\"color:teal\"), br(),\n              div(plotOutput(\"plot\"), textOutput(\"testText\"), dataTableOutput(\"testTable\"))\n              )\n              )\n  )",
+    "created" : 1507034120456.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "15506518",
+    "id" : "6B7C3B16",
+    "lastKnownWriteTime" : 1508241292,
+    "last_content_update" : 1508241292094,
+    "path" : "D:/R Studio/RStudio/3103/ui.R",
+    "project_path" : "ui.R",
+    "properties" : {
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

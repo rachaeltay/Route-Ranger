@@ -1,0 +1,9 @@
+{
+    "path" : "D:/MongoDB/bin/3103",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}
