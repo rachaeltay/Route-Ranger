@@ -1,8 +1,8 @@
-library(shiny)
 library(mongolite)
 library(jsonlite)
 library(DT)
 library(ggplot2)
+library(shiny)
 
 queryList <- mongo(db = "local", collection = "queryList")
 
@@ -23,7 +23,11 @@ server <- function(input, output) {
     }
   }
   
-  getBoarding <- eventReactive(input$genResult, {
+  getBoarding <- reactive({
+    shiny::validate(
+      need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
+    )
+    
     if (input$timeFrame == "Hourly") {
       query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"},"$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}')
     } else if (input$timeFrame == "Monthly") {
@@ -31,10 +35,13 @@ server <- function(input, output) {
     } else {
       query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
     }
-    queryList$find(query)
   })
   
-  getAlighting <- eventReactive(input$genResult, {
+  getAlighting <- reactive({
+    shiny::validate(
+      need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
+    )
+    
     if (input$timeFrame == "Hourly") {
       query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"},"$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}')
     } else if (input$timeFrame == "Monthly") {
@@ -42,22 +49,14 @@ server <- function(input, output) {
     } else {
       query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
     }
-    queryList$find(query)
   })
   
-  output$boarding <- renderText({
-    print(nrow(getBoarding()))
-  })
-  
-  output$alighting <- renderText({
-    print(nrow(getAlighting()))
-  })
-  
-  output$plot <- renderPlot({
+  getPlot <- eventReactive(input$genResult, {
     busStop <- isolate(input$busStop)
     timeFrame <- isolate(input$timeFrame)
-    boarding <- getBoarding()
-    alighting <- getAlighting()
+    
+    boarding <- queryList$find(getBoarding())
+    alighting <- queryList$find(getAlighting())
     
     if (timeFrame == "Hourly") {
       boarding <- table(cut(boarding$timestamp, breaks="hour"))
@@ -96,6 +95,28 @@ server <- function(input, output) {
       scale_y_continuous(breaks=seq(0:10000)) #how to do this w/o hard coding?
   })
   
+  output$plot <- renderPlot({
+    getPlot()
+  })
+  
+  getNumBoarding <- eventReactive(input$genResult, {
+    isolate(nrow(queryList$find(getBoarding())))
+  })
+  
+  getNumAlighting <- eventReactive(input$genResult, {
+    isolate(nrow(queryList$find(getAlighting())))
+  })
+  
+  output$boarding <- renderText({
+    print(getNumBoarding())
+  })
+  
+  output$alighting <- renderText({
+    print(getNumAlighting())
+  })
+  
+  
+  # test outputs
   output$testText <- renderText({
     
   })
@@ -103,4 +124,5 @@ server <- function(input, output) {
   output$testTable <- DT::renderDataTable({
     
   })
+  
 }
