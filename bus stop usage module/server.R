@@ -81,10 +81,19 @@ server <- function(input, output) {
     colnames(alighting) <- c("timeFrame", "Count", "Group")
     combined <- rbind(alighting, boarding)
     
-    plot <- ggplot(combined, aes(x=timeFrame, y=Count, group=Group, color=Group)) + geom_line()
-    plot <- plot + labs(title=paste0('Number of riders boarding at ', busStop), y="# of riders", x="")
-    plot <- plot + theme(panel.background=element_rect(fill="black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-    plot
+    if (timeFrame == "Hourly") {
+      combined$timeFrame <- substring(combined$timeFrame, 12, 16)
+    } else if (timeFrame == "Daily" || timeFrame == "Weekly") {
+      combined$timeFrame <- substring(combined$timeFrame, 6, 10)
+    } else if (timeFrame == "Monthly") {
+      combined$timeFrame <- substring(combined$timeFrame, 0, 7)
+    }
+    
+    plot <- ggplot(combined, aes(x=timeFrame, y=Count, group=Group, color=Group)) +geom_line(position=position_dodge(width=0.07))
+    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
+      theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(), 
+            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))+
+      scale_y_continuous(breaks=seq(0:10000)) #how to do this w/o hard coding?
   })
   
   output$testText <- renderText({
@@ -92,6 +101,6 @@ server <- function(input, output) {
   })
   
   output$testTable <- DT::renderDataTable({
-    getBoarding()
+    
   })
 }
