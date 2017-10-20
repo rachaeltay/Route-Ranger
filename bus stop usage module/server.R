@@ -3,6 +3,8 @@ library(jsonlite)
 library(DT)
 library(ggplot2)
 library(shiny)
+library(forecast)
+library(TTR)
 
 queryList <- mongo(db = "local", collection = "queryList")
 
@@ -79,6 +81,23 @@ server <- function(input, output) {
     alighting$Group <- paste0("Alighting from ", busStop)
     colnames(alighting) <- c("timeFrame", "Count", "Group")
     combined <- rbind(alighting, boarding)
+    combined$timeFrame <- as.Date(combined$timeFrame)
+    
+    boardingForecastTimeFrame <- data.frame(as.Date(tail(boarding$timeFrame,2))+2)
+    boardingForecastTimeFrame <- rbind(list(head(boarding$timeFrame, nrow(boarding)-2)), boardingForecastTimeFrame)
+    alightingForecastTimeFrame <- data.frame(as.Date(tail(alighting$timeFrame,2))+2)
+    alightingForecastTimeFrame <- rbind(list(head(alighting$timeFrame, nrow(alighting)-2)), alightingForecastTimeFrame)
+    
+    boardingSMA <- data.frame(boardingForecastTimeFrame, SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from", busStop))
+    colnames(boardingSMA) <- c("timeFrame", "Count", "Group")
+    boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
+    alightingSMA <- data.frame(alightingForecastTimeFrame, SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
+    colnames(alightingSMA) <- c("timeFrame", "Count", "Group")
+    alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
+    combinedSMA <- rbind(alightingSMA, boardingSMA)
+    combinedSMA$timeFrame <- as.Date(combinedSMA$timeFrame)
+    combined <- rbind(combined, combinedSMA)
+    combined$timeFrame <- as.character(combined$timeFrame)
     
     if (timeFrame == "Hourly") {
       combined$timeFrame <- substring(combined$timeFrame, 12, 16)

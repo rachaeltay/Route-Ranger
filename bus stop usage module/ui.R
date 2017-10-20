@@ -14,7 +14,9 @@ ui <- fluidPage(
                  ),
     mainPanel(div(tags$label("Number of people boarding"), textOutput("boarding"),
               tags$label("Number of people aighting"), textOutput("alighting"), style="color:teal"), br(),
-              div(plotOutput("plot"), textOutput("testText"), dataTableOutput("testTable"))
+              div(plotOutput("plot"), 
+                  # test outputs
+                  textOutput("testText"), dataTableOutput("testTable"))
               )
               )
   )
