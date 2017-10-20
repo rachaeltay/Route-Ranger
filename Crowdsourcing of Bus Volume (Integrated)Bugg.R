@@ -216,7 +216,7 @@ server = function(input, output, session) {
       
       queryTable$bus <- isolate(input$busService)
       queryTable$stopId <- isolate(input$startStop)
-      queryTable$busIdx <- getBus() #numeric
+      queryTable$busIdx <- (getBus())%%7 #numeric
       queryTable$dateQ <- as.character(getDateQ())#added
       queryTable$timeQ <- as.character(getTimeQ()) #
       queryTable$timeArr <- ""
@@ -628,7 +628,7 @@ server = function(input, output, session) {
         }#endelse
       }#end of while
     }#end of else
-    ctr <- ctr%%7 #add new modulo
+   #add new modulo
     return(ctr)
   }
   
