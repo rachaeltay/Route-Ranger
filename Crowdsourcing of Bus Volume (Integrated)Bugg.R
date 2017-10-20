@@ -24,8 +24,8 @@ avgVolTable <- c("busId", "busService", "startStop", "avgVol", "timestamp")
 responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity", "timestamp")
 # Shiny app with crowdsourcing form
 
-databaseName <- "myshinydatabase"
-databaseUrl <- "mongodb://127.0.0.1:27017"
+databaseName <- "trrdb"
+databaseUrl <- "mongodb://localhost"
 
 dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
 
@@ -122,6 +122,7 @@ ui = navbarPage( "Route Range", fluid = TRUE,
                                  h2(textOutput("stats"), style = "color: Blue;"),
                                  textOutput("var"), 
                                  textOutput("timestamp"),
+                                 plotOutput("ma"),
                                  hr()
                           ),
                           column(8, offset = 0, plotOutput("graph")),
@@ -148,8 +149,29 @@ server = function(input, output, session) {
       #end of getting timeNow-----------------------------------------------ben
     })
     
-    getTimeQ = reactive({return(Sys.time())})
+    #NEW CHANGES 
+    gettimeOnly = reactive({
+      #timeOOnly Manipulation ------------------------------------------------ben
+      datetime <- Sys.time()
+      datetime <- as.character(datetime)
+      tnow<- as.character(substr(datetime,12,16))
+      return(tnow)
+      #end of getting timeonly-----------------------------------------------ben
+    })
     
+    
+    getdateOnly = reactive({
+      #timeOOnly Manipulation ------------------------------------------------ben
+      datetime <- Sys.time()
+      datetime <- as.character(datetime)
+      dnow<- as.character(substr(datetime,1,10))
+      return(dnow)
+      #end of getting timeonly-----------------------------------------------ben
+    })
+    
+    getTimeQ <- reactive({return(gettimeOnly())})
+    getDateQ <- reactive({return(getdateOnly())})
+    #END OF TIME CHANGES
     
     #Start of select data -------------------------------------------------->
     
@@ -188,18 +210,19 @@ server = function(input, output, session) {
     }) #end of getBUS -------------------------------------------->
     
     #for zongjie part
-    queryTable <- c("bus","stopId","busIdx","timeQ","timeArr","rETA")
+    queryTable <- c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA")
     
     insertQuery <- eventReactive(input$submitQ, {
       
       queryTable$bus <- isolate(input$busService)
       queryTable$stopId <- isolate(input$startStop)
-      queryTable$busIdx <- getBusId() #numeric
+      queryTable$busIdx <- getBus() #numeric
+      queryTable$dateQ <- as.character(getDateQ())#added
       queryTable$timeQ <- as.character(getTimeQ()) #
       queryTable$timeArr <- ""
       queryTable$rETA <- 0
       
-      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","timeQ","timeArr","rETA")],auto_unbox = TRUE)
+      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA")],auto_unbox = TRUE)
     })
     #end of sending data to db
     
@@ -228,8 +251,8 @@ server = function(input, output, session) {
       #print(queryData[1,])
       
       getMins <- function(data) {
-        hour <- as.numeric(substr(data,12,13))
-        min <- as.numeric(substr(data,15,16))
+        hour <- as.numeric(substr(data,1,2))
+        min <- as.numeric(substr(data,4,5))
         timequery <- (hour*60)+(min)
         return(timequery)
       }#end of getMins
@@ -244,7 +267,43 @@ server = function(input, output, session) {
       
       print(queryData)
       dataF<- data.frame(cbind(queryData["timeQ"],queryData["rETA"]))
+      
+      dataF<- cbind(ma=0,dataF)
+      
+      findUnique<- function(data, num){
+        val <- 0
+        comp <- 0
+        ctr <- 0
+        for(i in 1:num) {
+          if (ctr >= 3){break}
+          v <- data[num-i,]["rETA"][1,]
+          if (comp <= v){
+            comp <- v
+            ctr <- ctr +1
+            val <- val + comp
+            
+          }
+          else{}
+        }
+        final <-  val/ctr
+        return(final)
+      }#findUnique end
+      
+      if(nrow(dataF)>4){
+        for (row in 4:nrow(dataF)) {
+          dataF[row,]["ma"][1,] <- findUnique(dataF,row)
+        }#end of row manipulation
+        dataF[1,]["ma"][1,] <- dataF[4,]["ma"][1,]
+        dataF[2,]["ma"][1,] <- dataF[4,]["ma"][1,]  
+        dataF[3,]["ma"][1,] <- dataF[4,]["ma"][1,]  
+        
+      }
+      
       print(dataF)
+      output$ma <- renderPlot(
+        ggplot(data=dataF,aes(x=timeQ,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
+        +geom_line(aes(y=ma),color="red")
+      )
       
 
       
@@ -569,7 +628,7 @@ server = function(input, output, session) {
         }#endelse
       }#end of while
     }#end of else
-    
+    ctr <- ctr%%7 #add new modulo
     return(ctr)
   }
   
