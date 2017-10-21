@@ -652,8 +652,9 @@ server = function(input, output, session) {
   }#end of loadindex
   
   loadquery <- function(filter) {
-    query <- querydb$find(query = toString(toJSON(list(bus=input$busService,stopId=input$startStop,busIdx=getBusId()),auto_unbox = TRUE)))
-  }#end of load query
+    query <- querydb$find(query = toString(toJSON(list(bus=input$busService,stopId=input$startStop,busIdx=(getBusId()%%7)),auto_unbox = TRUE)))
+    }#end of load query
+  
   #end of db query -----------------------------------------------------ben
   
   #Functions to save data to db ----------------------------------------saveDB/Ben
