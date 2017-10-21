@@ -210,7 +210,7 @@ server = function(input, output, session) {
     }) #end of getBUS -------------------------------------------->
     
     #for zongjie part
-    queryTable <- c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA")
+    queryTable <- c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")
     
     insertQuery <- eventReactive(input$submitQ, {
       
@@ -222,7 +222,12 @@ server = function(input, output, session) {
       queryTable$timeArr <- ""
       queryTable$rETA <- 0
       
-      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA")],auto_unbox = TRUE)
+      queryTable$sourceBusStop <- isolate(input$startStop)
+      queryTable$destinationbusStop <- isolate(input$endStop)
+      queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
+      
+      
+      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
     })
     #end of sending data to db
     

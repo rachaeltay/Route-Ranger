@@ -16,7 +16,7 @@ ui <- fluidPage(
               tags$label("Number of people aighting"), textOutput("alighting"), style="color:teal"), br(),
               div(plotOutput("plot"), 
                   # test outputs
-                  textOutput("testText"), dataTableOutput("testTable"))
+                  textOutput("testTyext"), dataTableOutput("teystTable"))
               )
               )
   )
