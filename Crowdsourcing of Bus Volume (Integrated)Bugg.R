@@ -351,6 +351,30 @@ server = function(input, output, session) {
   
   #ENDBEN --------------------------------------------------------->
   
+  loadStops <- function(filter) { #all the bus stops
+    allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
+    answer <- list(serviceAVail["list"][1,]) 
+  }#loadStops
+  
+  loadService <- function(filter) { #load bus available
+    serviceAvail <- routeidx$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
+    num <-  nrow(serviceAvail)
+    vector <- c()
+    pointer <- serviceAvail[1,]["A1"][1,]
+    if(pointer > 0) { vector[1] <- "A1" }
+    pointer <- serviceAvail[2,]["A2"][1,]
+    if(pointer > 0) { vector[2] <- "A2" }
+    pointer <- serviceAvail[3,]["D1"][1,]
+    if(pointer > 0) { vector[3] <- "D1" }
+    pointer <- serviceAvail[4,]["D2"][1,]
+    if(pointer > 0) { vector[4] <- "D2" }
+    
+    return(list(vector))
+    
+  }#loadService
+  
+  
+  
   
   #Pre-cond: Waits for submitV button to be depressed
   #Post-Cond: Returns a JSON file of user responses
