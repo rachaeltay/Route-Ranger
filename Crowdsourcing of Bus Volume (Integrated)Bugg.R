@@ -168,7 +168,7 @@ server = function(input, output, session) {
       return(dnow)
       #end of getting timeonly-----------------------------------------------ben
     })
-    
+    today <- reactive({Sys.time})
     getTimeQ <- reactive({return(gettimeOnly())})
     getDateQ <- reactive({return(getdateOnly())})
     #END OF TIME CHANGES
@@ -210,13 +210,14 @@ server = function(input, output, session) {
     }) #end of getBUS -------------------------------------------->
     
     #for zongjie part
-    queryTable <- c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")
+    queryTable <- c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")
     
     insertQuery <- eventReactive(input$submitQ, {
       
       queryTable$bus <- isolate(input$busService)
       queryTable$stopId <- isolate(input$startStop)
       queryTable$busIdx <- (getBus())%%7 #numeric
+      queryTable$realidx <-  getBus()
       queryTable$dateQ <- as.character(getDateQ())#added
       queryTable$timeQ <- as.character(getTimeQ()) #
       queryTable$timeArr <- ""
@@ -227,12 +228,13 @@ server = function(input, output, session) {
       queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
       
       
-      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
+      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
     })
     #end of sending data to db
     
     #send data to db START
-    saveResponses(insertQuery())
+    if(selectdata() == "Wrong Inputs"){}
+    else{saveResponses(insertQuery())}
     #send data to db END
     
     observeEvent(input$submitV, {
@@ -266,8 +268,12 @@ server = function(input, output, session) {
         instance <- queryData[i,]
         qtime <- getMins(queryData[i,]["timeQ"][1,])
         queryData[i,]["timeArr"][1,] <- arrTime
-        reta <- arrTime - qtime
-        queryData[i,]["rETA"][1,] <- reta
+        if (as.character(substr((queryData[i,]["dateQ"][1,]),1,10)) == getDateQ()){
+          if (queryData[i,]["realidx"][1,]==queryData[numQuery,]["realidx"][1,]){
+            reta <- arrTime - qtime
+            queryData[i,]["rETA"][1,] <- reta
+          }
+        }
       }
       
       print(queryData)
@@ -390,7 +396,10 @@ server = function(input, output, session) {
   })
   
   #Convenient Deletion of all rows - will be removed
-  observeEvent(input$clear, { 
+  observeEvent(input$clear, {
+    
+    data <- querydb$remove('{}')
+    
     dbDyResponses$remove(query = "{}")
     dbResponses$remove(query = "{}")
     dbDyAvgVol$remove(query = "{}")
