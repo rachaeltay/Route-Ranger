@@ -1,5 +1,7 @@
 library(shiny)
-
+library(shinydashboard)
+library(shinyjs)
+library(DT)
 stops <- c("KR_terminal", "UHC", "Central_Library", "Kent_RIdge_MRT", "COM2", "Museum", "BIZ2", "Opp_HSSML", "LT13", "Ventus", "PGP_Hse_12", "Computer_Centre", "PGP_Hse_14_15", "PGP_Hse_7", "YIH", "Opp_YIH", "UHall", "Opp_UHall", "PGP", "Raffles_Hall", "EA", "PGPR", "LT29", "S17", "Opp_Kent_Ridge_MRT")
 timeIntervals <- c("Monthly", "Weekly", "Daily", "Hourly")
 
@@ -95,6 +97,7 @@ ui <- dashboardPage(skin = "yellow",
                                                                                                                       "CP11"="CP11",
                                                                                                                       "UTown"="UTown")),
                                        actionButton(inputId = "submitQ", label = "Submit"),
+                                       actionButton("clear", "Clear"),
                                        
                                        sliderInput("busCapacity", "Bus Capacity", 1, 3, 0),
                                        actionButton("submitV", "submit"), 
@@ -127,7 +130,7 @@ ui <- dashboardPage(skin = "yellow",
                         )
                       )
                     )
-)
+
 
 ui <- fluidPage(
   titlePanel(div(h1("The Route Ranger"), style="color:red")),
