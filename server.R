@@ -1,11 +1,10 @@
-########################## Crowdsourcing of Bus Volume ########################## 
-
-library(shiny)
-library(data.table)
-library(DT)
 library(mongolite)
 library(jsonlite)
+library(DT)
 library(ggplot2)
+library(shiny)
+library(forecast)
+library(TTR)
 
 #### ASSUMPTIONS ####
 # 1. App users only submit busCapacity when they are onboard the bus
@@ -35,6 +34,13 @@ dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databa
 
 dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
+# Google Authentication
+options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
+                                        "https://www.googleapis.com/auth/userinfo.profile"))
+options("googleAuthR.webapp.client_id" = "682524538636-26vgeiltv82qiapjk63mg79ltrtscovc.apps.googleusercontent.com")
+options("googleAuthR.webapp.client_secret" = "SVsY07OxK6yQeaqtEcSIFPsh")
+
+
 #BEN Database
 #Load testRoute <- database with route details
 #routeidx <- mongo(db="trrdb", collection="testRoute", url = "mongodb://localhost")
@@ -51,93 +57,155 @@ finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
 querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
 
-ui = navbarPage( "Route Range", fluid = TRUE,
-                 tabPanel("Crowdsourcing",
-                          column(4, selectInput(inputId = "busService", label = "Choose Your Bus", c("A1"="A1","A2"="A2","D1"="D1","D2"="D2")),
-                                 
-                                 selectInput(inputId = "startStop", label = "Choose Your Starting Bus Stop", c("PGP"="PGP",
-                                                                                                               "Kent_Ridge_MRT"="Kent_Ridge_MRT",
-                                                                                                               "NUH"="NUH",
-                                                                                                               "LT29"="LT29",
-                                                                                                               "UHall"="UHall",
-                                                                                                               "Opp_UHC"="Opp_UHC",
-                                                                                                               "YIH"="YIH",
-                                                                                                               "Central_Library"="Central_Library",
-                                                                                                               "LT13"="LT13",
-                                                                                                               "AS7"="AS7",
-                                                                                                               "COM2"="COM2",
-                                                                                                               "BIZ2"="BIZ2",
-                                                                                                               "PGP_Hse_14_15"="PGP_Hse_14_15",
-                                                                                                               "PGP_Hse_12"="PGP_Hse_12",
-                                                                                                               "PGP_Hse_7"="PGP_Hse_7",
-                                                                                                               "Opp_HSSML"="Opp_HSSML",
-                                                                                                               "Opp_NUSS"="Opp_NUSS",
-                                                                                                               "Ventus"="Ventus",
-                                                                                                               "Computer_Centre"="Computer_Centre",
-                                                                                                               "Opp_YIH"="Opp_YIH",
-                                                                                                               "Museum"="Museum",
-                                                                                                               "UHC"="UHC",
-                                                                                                               "Opp_UHall"="Opp_UHall",
-                                                                                                               "S17"="S17",
-                                                                                                               "Opp_NUH"="Opp_NUH",
-                                                                                                               "Opp_Kent_Ridge_MRT"="Opp_Kent_Ridge_MRT",
-                                                                                                               "PGPR"="PGPR",
-                                                                                                               "CP11"="CP11",
-                                                                                                               "UTown"="UTown")),
-                                 
-                                 selectInput(inputId = "endStop", label = "Choose Your Destination Bus Stop", c("PGP"="PGP",
-                                                                                                                "Kent_Ridge_MRT"="Kent_Ridge_MRT",
-                                                                                                                "NUH"="NUH",
-                                                                                                                "LT29"="LT29",
-                                                                                                                "UHall"="UHall",
-                                                                                                                "Opp_UHC"="Opp_UHC",
-                                                                                                                "YIH"="YIH",
-                                                                                                                "Central_Library"="Central_Library",
-                                                                                                                "LT13"="LT13",
-                                                                                                                "AS7"="AS7",
-                                                                                                                "COM2"="COM2",
-                                                                                                                "BIZ2"="BIZ2",
-                                                                                                                "PGP_Hse_14_15"="PGP_Hse_14_15",
-                                                                                                                "PGP_Hse_12"="PGP_Hse_12",
-                                                                                                                "PGP_Hse_7"="PGP_Hse_7",
-                                                                                                                "Opp_HSSML"="Opp_HSSML",
-                                                                                                                "Opp_NUSS"="Opp_NUSS",
-                                                                                                                "Ventus"="Ventus",
-                                                                                                                "Computer_Centre"="Computer_Centre",
-                                                                                                                "Opp_YIH"="Opp_YIH",
-                                                                                                                "Museum"="Museum",
-                                                                                                                "UHC"="UHC",
-                                                                                                                "Opp_UHall"="Opp_UHall",
-                                                                                                                "S17"="S17",
-                                                                                                                "Opp_NUH"="Opp_NUH",
-                                                                                                                "Opp_Kent_Ridge_MRT"="Opp_Kent_Ridge_MRT",
-                                                                                                                "PGPR"="PGPR",
-                                                                                                                "CP11"="CP11",
-                                                                                                                "UTown"="UTown")),
-                                 actionButton(inputId = "submitQ", label = "Submit"),
-                                 
-                                 sliderInput("busCapacity", "Bus Capacity", 1, 3, 0),
-                                 actionButton("submitV", "submit"), 
-                                 actionButton("clear", "Clear"), 
-                                 h2(textOutput("stats"), style = "color: Blue;"),
-                                 textOutput("var"), 
-                                 textOutput("timestamp"),
-                                 plotOutput("ma"),
-                                 hr()
-                          ),
-                          column(8, offset = 0, plotOutput("graph")),
-                          column(4, actionButton("update", "Update Plot")),
-                          column(12, dataTableOutput("responses", width = 300), tags$hr())
-                          
-                 ),
-                 tabPanel("New Tab"
-                          #plotOutput("busVol")
-                          #dataTableOutput("stats", width = 300, tags$hr())
-                          #dataTableOutput("tData", width = 300, tags$hr())
-                 )
-)
+queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
-server = function(input, output, session) {
+
+
+
+server <- function(input, output) {
+  
+  ####################   Google Login   ####################
+  
+  ## Global variables needed throughout the app
+  rv <- reactiveValues(
+    login = FALSE
+  )
+  
+  showModal(modalDialog(
+    title = "Welcome to Route Ranger",
+    googleAuthUI("gauth_login"),
+    # footer = NULL,
+    easyClose = FALSE
+  ))
+  
+  observe({
+    if (rv$login) {
+      removeModal()
+    }
+  })
+  
+  ## Authentication
+  accessToken <- callModule(googleAuth, "gauth_login",
+                            login_class = "btn btn-primary",
+                            logout_class = "btn btn-warning")
+  
+  userDetails <- reactive({
+    validate(
+      need(accessToken(), "not logged in")
+    )
+    rv$login <- TRUE
+    print("true")
+    with_shiny(get_user_info, shiny_access_token = accessToken())
+  })
+  
+  ## Display user's Google display name after successful login
+  output$display_username <- renderText({
+    validate(
+      need(userDetails(), "getting user details")
+    )
+    userDetails()$displayName
+  })
+  
+  ## Workaround to avoid shinyapps.io URL problems
+  observe({
+    if (rv$login) {
+      shinyjs::onclick("gauth_login-googleAuthUi",
+                       shinyjs::runjs("window.location.href = 'https://yourdomain.shinyapps.io/appName';"))
+    }
+  })
+  
+  
+  ####################   Dashboard Plot   ####################
+  
+  initialiseData <- function(){
+    
+    
+    busStops <- list('KentRidgeMRT', 'PGP',"KR")
+    # startStop <- recentJourney()
+    
+    dfAvgVol <- list()
+    
+    for (i in 1:length(busStops)){
+      
+      avgVolData <- data.frame(busCapacity = sample(15:40, size=17, replace=TRUE)) #Added column name, "busCapacity"
+      timestamps <- seq(from = as.POSIXct("2010-10-16 07:00:00"),
+                        to=as.POSIXct("2010-10-16 23:00:00"),
+                        by="hour")
+      data <- cbind(avgVolData, timestamps)
+      
+      # name of bus stop as index, double squared brackets reference dataframe columns
+      # dfAvgVol[[busStops[[i]]]] <- data
+      
+      dfAvgVol[[busStops[[i]]]] <- dbAvgVol$find(query = toString(toJSON(list(busStop = busStops[i]), auto_unbox = TRUE)))
+    }
+    
+    return(dfAvgVol)
+  }
+  
+  # Initialize my_data
+  print('Initialised')
+  dfAvgVol <- initialiseData()
+  
+  # Update every hour update all bus stop dataframes
+  updateData <- function(){
+    for (i in 1:length(dfAvgVol)){
+      # pull from mongodb average data update of each stop
+      # replace dataframe with new containing added data
+      dfAvgVol[[busStops[[i]]]] <- dbAvgVol$find(query = toString(toJSON(list(busStop = busStops[i]), auto_unbox = TRUE)))
+    }
+    print("dfAvgVol")
+    print(busStop)
+    
+    # retrieve possibly new starting stop
+    # startStop <- recentJourney()
+  }
+  
+  # Plot the current hours data
+  output$volAgainstTime <- renderPlot({
+    print("Render Plot")
+    print(dfAvgVol)
+    invalidateLater(60000, session) # invalidate every minute
+    print("Update")
+    updateData()
+    ggplot(dfAvgVol$KR, aes(timestamps, busCapacity, colour=busService), ymin = 1, ymax = 40) + 
+      # , colour=busCapacity, group = cat
+      # scale_colour_viridis(option = "A") +
+      geom_line() +
+      scale_x_datetime(breaks = date_breaks("1 hours"), date_labels = "%I%p") +  #Scales the axis
+      labs(x = "Time", y="Number of people on the bus") +
+      theme(panel.background=element_rect(fill="lightblue")) 
+  })
+  
+  timeSeriesAvgVol <- function(){
+    
+    # eg. see seasonal trend between days
+    # eg. cyclical trend in months (near exam period less ppl come to sch or attend classes..?)
+    
+    # store data in time series object
+    # time across a day
+    busCapTS <- ts(dfAvgVol$PGP$busCapacity, start=8, end=23)
+    plot(busCapTS)
+    
+    # store date for moving average
+    ma.forecast <- ma(busCapTS, order=3)
+    ma.TTR <- SMA(busCapTS, 3)
+    plot(ma.forecast)
+    plot(ma.TTR)
+    
+    # need to do this across a longer time period with more cyclical pattern
+    
+    # literally multiple freq lol
+    busCapTS <- ts(dfAvgVol$KR$busCapacity, start=8, end=23, frequency = 5)
+    # simple exponential - models level (e.g. mean)
+    fit <- HoltWinters(busCapTS, beta=FALSE, gamma=FALSE)
+    # double exponential - models level and trend
+    fit <- HoltWinters(busCapTS, gamma=FALSE)
+    # triple exponential - models level, trend, and seasonal components
+    fit <- HoltWinters(busCapTS)
+    # predictive accuracy
+    accuracy(forecast(fit))
+  }
+  
   
   #STARTBEN ------------------------------------------------------->
   
@@ -237,6 +305,7 @@ server = function(input, output, session) {
     else{saveResponses(insertQuery())}
     #send data to db END
     
+    
     observeEvent(input$submitV, {
       
       getActualTime = reactive({
@@ -272,8 +341,8 @@ server = function(input, output, session) {
           if (queryData[i,]["realidx"][1,]==queryData[numQuery,]["realidx"][1,]){
             reta <- arrTime - qtime
             queryData[i,]["rETA"][1,] <- reta
-          }
-        }
+          }#end of if the bus idx is correct
+        }#end of if the date is today
       }
       
       print(queryData)
@@ -316,7 +385,7 @@ server = function(input, output, session) {
         +geom_line(aes(y=ma),color="red")
       )
       
-
+      
       
       
       # dataF<- data.frame(queryData$timeQ,queryData$rETA)
@@ -350,30 +419,6 @@ server = function(input, output, session) {
   })
   
   #ENDBEN --------------------------------------------------------->
-  
-  loadStops <- function(filter) { #all the bus stops
-    allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
-    answer <- list(serviceAVail["list"][1,]) 
-  }#loadStops
-  
-  loadService <- function(filter) { #load bus available
-    serviceAvail <- routeidx$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
-    num <-  nrow(serviceAvail)
-    vector <- c()
-    pointer <- serviceAvail[1,]["A1"][1,]
-    if(pointer > 0) { vector[1] <- "A1" }
-    pointer <- serviceAvail[2,]["A2"][1,]
-    if(pointer > 0) { vector[2] <- "A2" }
-    pointer <- serviceAvail[3,]["D1"][1,]
-    if(pointer > 0) { vector[3] <- "D1" }
-    pointer <- serviceAvail[4,]["D2"][1,]
-    if(pointer > 0) { vector[4] <- "D2" }
-    
-    return(list(vector))
-    
-  }#loadService
-  
-  
   
   
   #Pre-cond: Waits for submitV button to be depressed
@@ -420,10 +465,7 @@ server = function(input, output, session) {
   })
   
   #Convenient Deletion of all rows - will be removed
-  observeEvent(input$clear, {
-    
-    data <- querydb$remove('{}')
-    
+  observeEvent(input$clear, { 
     dbDyResponses$remove(query = "{}")
     dbResponses$remove(query = "{}")
     dbDyAvgVol$remove(query = "{}")
@@ -619,7 +661,7 @@ server = function(input, output, session) {
       data <- dbDyAvgVol$find(query = toString(toJSON(list(busService = input$busService), auto_unbox = TRUE)))
     } 
   }
-
+  
   #Pre-cond: Allows querying by "A1", "A2", "D1", "D2", "all"
   #Post-cond: Reads responses by user with specified query
   #           and returns a dataframe of the result
@@ -666,7 +708,7 @@ server = function(input, output, session) {
         }#endelse
       }#end of while
     }#end of else
-   #add new modulo
+    #add new modulo
     return(ctr)
   }
   
@@ -691,7 +733,7 @@ server = function(input, output, session) {
   
   loadquery <- function(filter) {
     query <- querydb$find(query = toString(toJSON(list(bus=input$busService,stopId=input$startStop,busIdx=(getBusId()%%7)),auto_unbox = TRUE)))
-    }#end of load query
+  }#end of load query
   
   #end of db query -----------------------------------------------------ben
   
@@ -703,6 +745,140 @@ server = function(input, output, session) {
   
   #ENDFunctions saveDB--------------------------------------------------saveDB/Ben
   ###############################################################
+  
+  getStartDate <- function(date) {
+    if (input$timeFrame == "Monthly") {
+      paste0(substr(date,0,8), "01", 'T00:00:00Z')
+    } else {
+      paste0(date, 'T00:00:00Z')
+    }
+  }
+  
+  getEndDate <- function(date) {
+    if (input$timeFrame == "Monthly") {
+      paste0(substr(date,0,8), "31", 'T00:00:00Z')
+    } else {
+      paste0(date, 'T00:00:00Z')
+    }
+  }
+  
+  getBoarding <- reactive({
+    shiny::validate(
+      need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
+    )
+    
+    if (input$timeFrame == "Hourly") {
+      query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"},"$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}')
+    } else if (input$timeFrame == "Monthly") {
+      query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
+    } else {
+      query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
+    }
+  })
+  
+  getAlighting <- reactive({
+    shiny::validate(
+      need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
+    )
+    
+    if (input$timeFrame == "Hourly") {
+      query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"},"$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}')
+    } else if (input$timeFrame == "Monthly") {
+      query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
+    } else {
+      query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
+    }
+  })
+  
+  getPlot <- eventReactive(input$genResult, {
+    busStop <- isolate(input$busStop)
+    timeFrame <- isolate(input$timeFrame)
+    
+    boarding <- queryList$find(getBoarding())
+    alighting <- queryList$find(getAlighting())
+    
+    if (timeFrame == "Hourly") {
+      boarding <- table(cut(boarding$timestamp, breaks="hour"))
+      alighting <- table(cut(alighting$timestamp, breaks="hour"))
+    } else if (timeFrame == "Daily") {
+      boarding <- table(cut(boarding$timestamp, breaks="day"))
+      alighting <- table(cut(alighting$timestamp, breaks="day"))
+    } else if (timeFrame == "Weekly") {
+      boarding <- table(cut(boarding$timestamp, breaks="week"))
+      alighting <- table(cut(alighting$timestamp, breaks="week"))
+    } else if (timeFrame == "Monthly") {
+      boarding <- table(cut(boarding$timestamp, breaks="month"))
+      alighting <- table(cut(alighting$timestamp, breaks="month"))
+    }
+    
+    boarding <- data.frame(boarding)
+    boarding$Group <- paste0("Boarding from ", busStop)
+    colnames(boarding) <- c("timeFrame", "Count", "Group")
+    alighting <- data.frame(alighting)
+    alighting$Group <- paste0("Alighting from ", busStop)
+    colnames(alighting) <- c("timeFrame", "Count", "Group")
+    combined <- rbind(alighting, boarding)
+    combined$timeFrame <- as.Date(combined$timeFrame)
+    
+    boardingForecastTimeFrame <- data.frame(as.Date(tail(boarding$timeFrame,2))+2)
+    boardingForecastTimeFrame <- rbind(list(head(boarding$timeFrame, nrow(boarding)-2)), boardingForecastTimeFrame)
+    alightingForecastTimeFrame <- data.frame(as.Date(tail(alighting$timeFrame,2))+2)
+    alightingForecastTimeFrame <- rbind(list(head(alighting$timeFrame, nrow(alighting)-2)), alightingForecastTimeFrame)
+    
+    boardingSMA <- data.frame(boardingForecastTimeFrame, SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from", busStop))
+    colnames(boardingSMA) <- c("timeFrame", "Count", "Group")
+    boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
+    alightingSMA <- data.frame(alightingForecastTimeFrame, SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
+    colnames(alightingSMA) <- c("timeFrame", "Count", "Group")
+    alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
+    combinedSMA <- rbind(alightingSMA, boardingSMA)
+    combinedSMA$timeFrame <- as.Date(combinedSMA$timeFrame)
+    combined <- rbind(combined, combinedSMA)
+    combined$timeFrame <- as.character(combined$timeFrame)
+    
+    if (timeFrame == "Hourly") {
+      combined$timeFrame <- substring(combined$timeFrame, 12, 16)
+    } else if (timeFrame == "Daily" || timeFrame == "Weekly") {
+      combined$timeFrame <- substring(combined$timeFrame, 6, 10)
+    } else if (timeFrame == "Monthly") {
+      combined$timeFrame <- substring(combined$timeFrame, 0, 7)
+    }
+    
+    plot <- ggplot(combined, aes(x=timeFrame, y=Count, group=Group, color=Group)) +geom_line(position=position_dodge(width=0.07))
+    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
+      theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(), 
+            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))+
+      scale_y_continuous(breaks=seq(0:10000)) #how to do this w/o hard coding?
+  })
+  
+  output$plot <- renderPlot({
+    getPlot()
+  })
+  
+  getNumBoarding <- eventReactive(input$genResult, {
+    isolate(nrow(queryList$find(getBoarding())))
+  })
+  
+  getNumAlighting <- eventReactive(input$genResult, {
+    isolate(nrow(queryList$find(getAlighting())))
+  })
+  
+  output$boarding <- renderText({
+    print(getNumBoarding())
+  })
+  
+  output$alighting <- renderText({
+    print(getNumAlighting())
+  })
+  
+  
+  # test outputs
+  output$testText <- renderText({
+    
+  })
+  
+  output$testTable <- DT::renderDataTable({
+    
+  })
+  
 }
-
-shinyApp(ui = ui, server = server)
