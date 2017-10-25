@@ -1,6 +1,6 @@
 library(shiny)
 
-stops <- c("KR_terminal", "UHC", "Central_Library", "Kent_RIdge_MRT", "COM2", "Museum", "BIZ2", "Opp_HSSML", "LT13", "Ventus", "PGP_Hse_12", "Computer_Centre", "PGP_Hse_14_15", "PGP_Hse_7", "YIH", "Opp_YIH", "UHall", "Opp_UHall", "PGP", "Raffles_Hall", "EA", "PGPR", "LT29", "S17", "Opp_Kent_Ridge_MRT")
+stops <- c("KR_terminal", "UHC", "Central_Library", "KentRidgeMRT", "COM2", "Museum", "BIZ2", "Opp_HSSML", "LT13", "Ventus", "PGP_Hse_12", "Computer_Centre", "PGP_Hse_14_15", "PGP_Hse_7", "YIH", "Opp_YIH", "UHall", "Opp_UHall", "PGP", "Raffles_Hall", "EA", "PGPR", "LT29", "S17", "Opp_Kent_Ridge_MRT")
 timeIntervals <- c("Monthly", "Weekly", "Daily", "Hourly")
 
 ui <- fluidPage(
@@ -16,7 +16,7 @@ ui <- fluidPage(
               tags$label("Number of people aighting"), textOutput("alighting"), style="color:teal"), br(),
               div(plotOutput("plot"), 
                   # test outputs
-                  textOutput("testTyext"), dataTableOutput("teystTable"))
+                  textOutput("testText"), dataTableOutput("testTable"))
               )
               )
   )
