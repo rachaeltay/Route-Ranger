@@ -7,6 +7,7 @@
 # library(TTR)
 library(shiny)
 library(shinythemes)
+library(ggthemes)
 # install.packages("shinythemes")
 library(shinydashboard)
 
@@ -85,6 +86,22 @@ queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00
 
 server <- function(input, output) {
   
+  ####################   Dashboard Boxes   ####################
+  output$startStopBox <- renderValueBox({
+    valueBox(
+      startStop, "Recent Stop", icon = icon("bus"),
+      color = "blue"
+    )
+  })
+  
+  output$avgVolBox <- renderValueBox({
+    valueBox(
+      # get last value of avgVol
+      dfAvgVol$startStop$avgVol[-1], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
+      color = "yellow"
+    )
+  })
+  
   ####################   Google Login   ####################
   
   ## Global variables needed throughout the app
@@ -138,26 +155,19 @@ server <- function(input, output) {
   
   ####################   Dashboard Plot   ####################
   
+  
+  # retrieve most recent query if not default to KR
+  # with dbAvgVol is my db
+  startStop <- loadStart()
+  busStops <- loadStops()
+  
   initialiseData <- function(){
     
-    
-    busStops <- list('KentRidgeMRT', 'PGP',"KR")
-    # startStop <- recentJourney()
-    
+    # for every bus stop I create a dataframe and populate data
     dfAvgVol <- list()
     
     for (i in 1:length(busStops)){
-      
-      avgVolData <- data.frame(busCapacity = sample(15:40, size=17, replace=TRUE)) #Added column name, "busCapacity"
-      timestamps <- seq(from = as.POSIXct("2010-10-16 07:00:00"),
-                        to=as.POSIXct("2010-10-16 23:00:00"),
-                        by="hour")
-      data <- cbind(avgVolData, timestamps)
-      
-      # name of bus stop as index, double squared brackets reference dataframe columns
-      # dfAvgVol[[busStops[[i]]]] <- data
-      
-      dfAvgVol[[busStops[[i]]]] <- dbAvgVol$find(query = toString(toJSON(list(busStop = busStops[i]), auto_unbox = TRUE)))
+      dfAvgVol[[busStops[[i]]]] <- avgVolData$find(paste0('{"startStop": "', busStops[i], '"}'))
     }
     
     return(dfAvgVol)
@@ -169,63 +179,81 @@ server <- function(input, output) {
   
   # Update every hour update all bus stop dataframes
   updateData <- function(){
+    
     for (i in 1:length(dfAvgVol)){
       # pull from mongodb average data update of each stop
       # replace dataframe with new containing added data
-      dfAvgVol[[busStops[[i]]]] <- dbAvgVol$find(query = toString(toJSON(list(busStop = busStops[i]), auto_unbox = TRUE)))
+      dfAvgVol[[busStops[[i]]]] <- avgVolData$find(paste0('{"startStop": "', busStops[i], '"}'))
     }
-    print("dfAvgVol")
-    print(busStop)
     
     # retrieve possibly new starting stop
-    # startStop <- recentJourney()
+    startStop <- loadStart()
   }
   
-  # Plot the current hours data
-  output$volAgainstTime <- renderPlot({
+  # # Plot the current hours data along with forecast
+  output$forecastCurrent <- renderPlot({
+    
     print("Render Plot")
-    print(dfAvgVol)
-    invalidateLater(60000, session) # invalidate every minute
+    invalidateLater(1800000, session) # invalidate every 30 minutes
     print("Update")
     updateData()
-    ggplot(dfAvgVol$KR, aes(timestamps, busCapacity, colour=busService), ymin = 1, ymax = 40) + 
-      # , colour=busCapacity, group = cat
-      # scale_colour_viridis(option = "A") +
+    print(dfAvgVol$startStop)
+    
+    # time across a day
+    
+    # Time Series Object
+    busCapTS <- ts(dfAvgVol$startStop$avgVol, start=7, end=23)
+    # Convert to Dataframe
+    busCapTS <- data.frame(as.double(busCapTS))
+    timeStampTS <- data.frame(dfAvgVol$startStop$timestamps)
+    avgVolTS <- cbind(busCapTS, timeStampTS, 'current')
+    colnames(avgVolTS) <- c("avgVol", "timestamps", 'forecast')
+    
+    busCapForecast <- SMA(ts(dfAvgVol$startStop$avgVol, start=7, end=23),3)
+    busCapForecast <- data.frame(busCapForecast)
+    # add 2 hours since k=3
+    timeStampForecast <- data.frame(dfAvgVol$startStop$timestamps + + 2*60*60)
+    avgVolForecast <- cbind(busCapForecast, timeStampForecast, 'forecast')
+    colnames(avgVolForecast) <- c("avgVol", "timestamps", 'forecast')
+    avgVolForecast <- avgVolForecast[3:nrow(avgVolForecast),]
+    
+    busCapCombi <- rbind(avgVolTS, avgVolForecast)
+    
+    ggplot(busCapCombi, aes(timestamps, avgVol, colour=forecast), ymin = 1, ymax = 40) + 
       geom_line() +
+      theme_economist() + scale_color_economist() +
+      # scale_color_manual(values=wes_palette(n=5, name="Zissou")) +
       scale_x_datetime(breaks = date_breaks("1 hours"), date_labels = "%I%p") +  #Scales the axis
       labs(x = "Time", y="Number of people on the bus") +
-      theme(panel.background=element_rect(fill="lightblue")) 
+      theme(panel.background=element_rect(fill="lightblue"))
   })
   
-  timeSeriesAvgVol <- function(){
-    
-    # eg. see seasonal trend between days
-    # eg. cyclical trend in months (near exam period less ppl come to sch or attend classes..?)
-    
-    # store data in time series object
-    # time across a day
-    busCapTS <- ts(dfAvgVol$PGP$busCapacity, start=8, end=23)
-    plot(busCapTS)
+  
+  output$forecastAcrossWeek <- renderPlot({
+    # holt winter across a week
     
     # store date for moving average
-    ma.forecast <- ma(busCapTS, order=3)
-    ma.TTR <- SMA(busCapTS, 3)
-    plot(ma.forecast)
-    plot(ma.TTR)
+    # ma.forecast <- ma(busCapTS, order=3)
+    # ma.TTR <- SMA(busCapTS, 3)
+    # plot(ma.forecast)
+    # ggplot(ma.forecast, aes(time,ma.forecast))
+    # ggplot(ma.TTR)
     
-    # need to do this across a longer time period with more cyclical pattern
+    # # literally multiple freq to create a week  (Time 1 to 7, Monday to Sunday)
+    # avgVolTS <- ts(dfAvgVol$startStop$avgVol, start=1, end=7, frequency = 14)
+    # # plot(avgVolTS)
+    # decomp <- decompose(avgVolTS)
+    # plot(decomp)
+    # # triple exponential - models level, trend, and seasonal components
+    # fit <- HoltWinters(decomp$seasonal)
+    # # plot(fit)
+    # # predictive accuracy
+    # print(accuracy(forecast(fit)))
     
-    # literally multiple freq lol
-    busCapTS <- ts(dfAvgVol$KR$busCapacity, start=8, end=23, frequency = 5)
-    # simple exponential - models level (e.g. mean)
-    fit <- HoltWinters(busCapTS, beta=FALSE, gamma=FALSE)
-    # double exponential - models level and trend
-    fit <- HoltWinters(busCapTS, gamma=FALSE)
-    # triple exponential - models level, trend, and seasonal components
-    fit <- HoltWinters(busCapTS)
-    # predictive accuracy
-    accuracy(forecast(fit))
-  }
+    #plot the seasonality in decomposition using Holt Winter for prediction
+    # ggsdc(busCapCombi, aes(x = timestamps, y = avgVol, colour = forecast), method = "stl") + geom_line()
+    
+  })
   
   
   #STARTBEN ------------------------------------------------------->
