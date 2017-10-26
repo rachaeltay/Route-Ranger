@@ -2,6 +2,8 @@
 install.packages("mc2d")
 
 library(mc2d)
+library(mongolite)
+
 
 435 to 480   7-8   500 
 480 to 540   8-9   550
@@ -39,7 +41,13 @@ qpd21 <- rtriang(300, min=1260, mode=1305, max=1320)
 qpd22 <- rtriang(200, min=1320, mode=1365, max=1380)
 #end rigging
 
+queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
+
+dataALL <- queryList$find()
+
+
+dataALL
 
 
 q7 <- data.frame("timeQ" = qpd7)

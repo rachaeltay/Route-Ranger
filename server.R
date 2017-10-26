@@ -1,11 +1,32 @@
-library(mongolite)
-library(jsonlite)
-library(DT)
-library(ggplot2)
+# library(mongolite)
+# library(jsonlite)
+# library(DT)
+# library(ggplot2)
+# library(shiny)
+# library(forecast)
+# library(TTR)
 library(shiny)
+library(shinythemes)
+# install.packages("shinythemes")
+library(shinydashboard)
+
+library(httr)
+library(jsonlite)
+library(ggplot2)
+library(DT)
+# put in AM and PM w date
+
+library(smooth)
+# %>% pipeline from magrittr
+library(magrittr)
+library(googleAuthR)
+library(shinyjs)
+library(mongolite)
+library(scales)
+# colour gradient in the graph
+library(viridis)
 library(forecast)
 library(TTR)
-
 #### ASSUMPTIONS ####
 # 1. App users only submit busCapacity when they are onboard the bus
 # 2. Riders submits the busCapacity immediately after boarding the bus
@@ -55,7 +76,7 @@ stime <-mongo(db=databaseName, collection="testTime", url = databaseUrl)
 finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
-querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
+#querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
 
 queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
@@ -278,7 +299,7 @@ server <- function(input, output) {
     }) #end of getBUS -------------------------------------------->
     
     #for zongjie part
-    queryTable <- c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")
+    queryTable <- c("bus","stopId","busIdx","realidx","pETA","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")
     
     insertQuery <- eventReactive(input$submitQ, {
       
@@ -286,14 +307,16 @@ server <- function(input, output) {
       queryTable$stopId <- isolate(input$startStop)
       queryTable$busIdx <- (getBus())%%7 #numeric
       queryTable$realidx <-  getBus()
-      queryTable$dateQ <- as.character(getDateQ())#added
-      queryTable$timeQ <- as.character(getTimeQ()) #
+      # queryTable$dateQ <- as.character(getDateQ())#added
+      # queryTable$timeQ <- as.character(getTimeQ()) #
+      queryTable$pETA <- as.numeric(selectdata())
       queryTable$timeArr <- ""
       queryTable$rETA <- 0
       
       queryTable$sourceBusStop <- isolate(input$startStop)
       queryTable$destinationbusStop <- isolate(input$endStop)
-      queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
+      queryTable$timestamp <- today()
+      #queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
       
       
       insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
@@ -327,26 +350,26 @@ server <- function(input, output) {
       #print(queryData[1,])
       
       getMins <- function(data) {
-        hour <- as.numeric(substr(data,1,2))
-        min <- as.numeric(substr(data,4,5))
+        hour <- as.numeric(substr(data,12,13))
+        min <- as.numeric(substr(data,15,16))
         timequery <- (hour*60)+(min)
         return(timequery)
       }#end of getMins
       
-      for (i in 1:numQuery){
+      for (i in 1:numQuery){ #
         instance <- queryData[i,]
-        qtime <- getMins(queryData[i,]["timeQ"][1,])
+        qtime <- getMins(queryData[i,]["timestamp"][1,])
         queryData[i,]["timeArr"][1,] <- arrTime
-        if (as.character(substr((queryData[i,]["dateQ"][1,]),1,10)) == getDateQ()){
-          if (queryData[i,]["realidx"][1,]==queryData[numQuery,]["realidx"][1,]){
+        if (as.character(substr((queryData[i,]["timestamp"][1,]),1,10)) == getDateQ()){
+          if (queryData[i,]["realidx"][1,]==whatBusIdx(queryData[i,]["timestamp"][1,])){
             reta <- arrTime - qtime
             queryData[i,]["rETA"][1,] <- reta
-          }#end of if the bus idx is correct
-        }#end of if the date is today
+          }
+        }
       }
       
       print(queryData)
-      dataF<- data.frame(cbind(queryData["timeQ"],queryData["rETA"]))
+      dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
       
       dataF<- cbind(ma=0,dataF)
       
@@ -381,7 +404,7 @@ server <- function(input, output) {
       
       print(dataF)
       output$ma <- renderPlot(
-        ggplot(data=dataF,aes(x=timeQ,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
+        ggplot(data=dataF,aes(x=timestamp,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
         +geom_line(aes(y=ma),color="red")
       )
       
@@ -682,6 +705,63 @@ server <- function(input, output) {
     avgVol <- round(mean(data$busCapacity), 2)
     avgVol
   }
+  
+  getBusId <- function() { # Changed - ZJ
+    ctr <- 0
+    realeta <- 0
+    flag =TRUE
+    
+    firstbus <- loadtime(isolate(input$busService))
+    firstbusTime <- firstbus["start"][1,] #first bus time
+    
+    stopIndex <- loadindex(isolate(input$startStop))
+    currIndex <- stopIndex[isolate(input$busService)][1,]
+    if (currIndex == 0) { realeta <- "Wrong Inputs"}
+    
+    else {
+      while(flag){
+        eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - getTime()
+        if(eta > 0) {
+          flag = FALSE
+          realeta <- as.character(eta)
+        }#endif
+        
+        else {
+          ctr <- ctr +1
+        }#endelse
+      }#end of while
+    }#end of else
+    #add new modulo
+    return(ctr)
+  }
+  whatBusIdx <- function(date) {
+    ctr <- 0
+    realeta <- 0
+    flag =TRUE
+    
+    firstbus <- loadtime(isolate(input$busService))
+    firstbusTime <- firstbus["start"][1,] #first bus time
+    whatTime <- getMins(date)
+    stopIndex <- loadindex(isolate(input$startStop))
+    currIndex <- stopIndex[isolate(input$busService)][1,]
+    if (currIndex == 0) { realeta <- "Wrong Inputs"}
+    
+    else {
+      while(flag){
+        eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - whatTime
+        if(eta > 0) {
+          flag = FALSE
+          realeta <- as.character(eta)
+        }#endif
+        
+        else {
+          ctr <- ctr +1
+        }#endelse
+      }#end of while
+    }#end of else
+    #add new modulo
+    return(ctr)
+  }#return correct busIdx of the timeQ
   
   getBusId <- function() { # Changed - ZJ
     ctr <- 0
