@@ -735,6 +735,12 @@ server <- function(input, output) {
     query <- querydb$find(query = toString(toJSON(list(bus=input$busService,stopId=input$startStop,busIdx=(getBusId()%%7)),auto_unbox = TRUE)))
   }#end of load query
   
+  #new function for rachael to get start stop
+  loadStart <- reactive({
+    return(isolate(input$startStop))
+  })
+  
+  
   #end of db query -----------------------------------------------------ben
   
   #Functions to save data to db ----------------------------------------saveDB/Ben
