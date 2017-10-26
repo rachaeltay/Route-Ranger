@@ -19,18 +19,21 @@ ui <- dashboardPage(skin = "yellow",
                     
                     dashboardBody(
                       tabItems(
-                        # First tab content
+                        # Dashboard content
                         tabItem(tabName = "dashboard",
                                 useShinyjs(),
-                                # want to include bus stop name in header
-                                h2("Recent Bus Journey at Kent Ridge MRT"),
+                                fluidRow(
+                                  valueBoxOutput(width = 6,"startStopBox"),
+                                  
+                                  valueBoxOutput(width = 6,"avgVolBox")
+                                ),
                                 fluidRow(
                                   box(
-                                    # title = "Bus Crowdness", background = "blue", solidHeader = TRUE,
-                                    plotOutput("volAgainstTime")),
+                                    width = 12,
+                                    plotOutput("forecastCurrent")),
                                   box(
-                                    title = "Recent Journey", background = "light-blue",
-                                    plotOutput("plot1", height = 300))
+                                    width = 12,
+                                    plotOutput("forecastAcrossWeek"))
                                 )
                         ),
                         
