@@ -5,6 +5,7 @@ library(ggplot2)
 library(shiny)
 library(forecast)
 library(TTR)
+library(googleAuthR)
 
 #### ASSUMPTIONS ####
 # 1. App users only submit busCapacity when they are onboard the bus
@@ -34,7 +35,7 @@ dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databa
 
 dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
-# Google Authentication
+#Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
                                         "https://www.googleapis.com/auth/userinfo.profile"))
 options("googleAuthR.webapp.client_id" = "682524538636-26vgeiltv82qiapjk63mg79ltrtscovc.apps.googleusercontent.com")
@@ -57,7 +58,7 @@ finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
 querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
 
-queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
+#queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
 
 
