@@ -133,4 +133,3 @@ ui <- dashboardPage(skin = "yellow",
                         )
                       )
                     )
-
