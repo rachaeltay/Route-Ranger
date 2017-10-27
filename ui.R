@@ -132,9 +132,4 @@ ui <- dashboardPage(skin = "yellow",
                         )
                         )
                       )
-<<<<<<< HEAD
                     )
-=======
-                    )
-
->>>>>>> master
