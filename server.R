@@ -1,10 +1,10 @@
-# library(mongolite)
-# library(jsonlite)
-# library(DT)
-# library(ggplot2)
-# library(shiny)
-# library(forecast)
-# library(TTR)
+library(mongolite)
+library(jsonlite)
+library(DT)
+library(ggplot2)
+library(shiny)
+library(forecast)
+library(TTR)
 library(shiny)
 library(shinythemes)
 library(ggthemes)
@@ -79,7 +79,7 @@ finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
 
 #queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
-
+querydb <- mongo(db="local", collection="queryList")
 
 
 
@@ -154,7 +154,7 @@ server <- function(input, output) {
   
   ####################   Dashboard Plot   ####################
   loadStart <- function(data){
-    query <- querydb$find()
+    query <- queryList$find()
     num <- nrow(query)
     data <- query[num,]["stopId"][1,]
     return(data)
