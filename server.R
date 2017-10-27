@@ -44,8 +44,11 @@ avgVolTable <- c("busId", "busService", "startStop", "avgVol", "timestamp")
 responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity", "timestamp")
 # Shiny app with crowdsourcing form
 
-databaseName <- "myshinydatabase"
-databaseUrl <- "mongodb://127.0.0.1:27017"
+# databaseName <- "myshinydatabase"
+# databaseUrl <- "mongodb://127.0.0.1:27017"
+
+databaseName <- "trrdb"
+databaseUrl <- "mongodb://localhost"
 
 dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
 
@@ -76,8 +79,8 @@ stime <-mongo(db=databaseName, collection="testTime", url = databaseUrl)
 finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
-queryList <- mongo(db=databaseName, collection="queryList", url= databaseUrl)
-
+#queryList <- mongo(db=databaseName, collection="queryList", url= databaseUrl)
+queryList <- mongo(db=databaseName, collection="queryBase", url= databaseUrl)
 #queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
 
@@ -157,7 +160,7 @@ server <- function(input, output, session) {
     query <- data.frame(queryList$find())
     num <- nrow(query)
     
-    data <- query[num,]["sourceBusStop"][1,]
+    data <- query[num,]["stopId"][1,]
     print("data")
     print(data)
     return(data)
@@ -178,15 +181,15 @@ server <- function(input, output, session) {
   # print(startStop)
   # print(busStops)
   
-  initialiseData <- function(){
+  initialiseData <- function(bus){
     
     # for every bus stop I create a dataframe and populate data
     dfAvgVol <- list()
     for (busStop in unlist(busStops)){
       print(busStop)
       #dfAvgVol[busStop] <- dbAvgVol$find(paste0('{"startStop": "', busStop, '"}'))
-      data <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
-                                                         busService = "A1"),
+      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
+                                                         busService = bus),
                                                          auto_unbox = TRUE)))
       # if() {
       #   dfAvgVol[busStop]
@@ -200,59 +203,75 @@ server <- function(input, output, session) {
   
   # Initialize my_data
   print('Initialised')
-  dfAvgVol <- initialiseData()
+  dfAvgVol <- initialiseData("A1")
   print(dfAvgVol)
   
-  # Update every hour update all bus stop dataframes
-  # updateData <- function(){
-  #   
-  #   for (i in 1:length(dfAvgVol)){
-  #     # pull from mongodb average data update of each stop
-  #     # replace dataframe with new containing added data
-  #     dfAvgVol[[busStops[[i]]]] <- dbAvgVol$find(paste0('{"startStop": "', busStops[i], '"}'))
-  #   }
-  #   
-  #   # retrieve possibly new starting stop
-  #   startStop <- loadStart()
-  # }
+  #Update every hour update all bus stop dataframes
+  updateData <- function(bus){
+    
+    for (busStop in unlist(busStops)){
+      # pull from mongodb average data update of each stop
+      # replace dataframe with new containing added data
+      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
+                                                                        busService = bus),
+                                                                   auto_unbox = TRUE)))
+    }
+    
+    # retrieve possibly new starting stop
+    return(TRUE)
+  }
   
-  # # Plot the current hours data along with forecast
-  # output$forecastCurrent <- renderPlot({
-  #   
-  #   print("Render Plot")
-  #   invalidateLater(1800000, session) # invalidate every 30 minutes
-  #   print("Update")
-  #   #updateData()
-  #   print(dfAvgVol$startStop)
-  #   
-  #   # time across a day
-  #   
-  #   # Time Series Object
-  #   busCapTS <- ts(dfAvgVol$startStop$avgVol, start=7, end=23)
-  #   # Convert to Dataframe
-  #   busCapTS <- data.frame(as.double(busCapTS))
-  #   timeStampTS <- data.frame(dfAvgVol$startStop$timestamps)
-  #   avgVolTS <- cbind(busCapTS, timeStampTS, 'current')
-  #   colnames(avgVolTS) <- c("avgVol", "timestamps", 'forecast')
-  # 
-  #   busCapForecast <- SMA(ts(dfAvgVol$startStop$avgVol, start=7, end=23),3)
-  #   busCapForecast <- data.frame(busCapForecast)
-  #   # add 2 hours since k=3
-  #   timeStampForecast <- data.frame(dfAvgVol$startStop$timestamps + + 2*60*60)
-  #   avgVolForecast <- cbind(busCapForecast, timeStampForecast, 'forecast')
-  #   colnames(avgVolForecast) <- c("avgVol", "timestamps", 'forecast')
-  #   avgVolForecast <- avgVolForecast[3:nrow(avgVolForecast),]
-  # 
-  #   busCapCombi <- rbind(avgVolTS, avgVolForecast)
-  # 
-  #   ggplot(busCapCombi, aes(timestamps, avgVol, colour=forecast), ymin = 1, ymax = 40) +
-  #     geom_line() +
-  #     theme_economist() + scale_color_economist() +
-  #     # scale_color_manual(values=wes_palette(n=5, name="Zissou")) +
-  #     scale_x_datetime(breaks = date_breaks("1 hours"), date_labels = "%I%p") +  #Scales the axis
-  #     labs(x = "Time", y="Number of people on the bus") +
-  #     theme(panel.background=element_rect(fill="lightblue"))
-  # })
+  # Plot the current hours data along with forecast
+  output$forecastCurrent <- renderPlot({
+
+    print("Render Plot")
+    invalidateLater(1800000, session) # invalidate every 30 minutes
+    print("Update")
+    updateData("A1")
+    startStop <- loadStart()
+    print(dfAvgVol[[startStop]])
+
+    # time across a day
+
+    # Time Series Object
+    busCapTS <- dfAvgVol[[startStop]]$avgVol
+    # Convert to Dataframe
+    busCapTS <- data.frame(as.double(busCapTS))
+    timeStampTS <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE)
+    colnames(timeStampTS) <- c("timestamp")
+    timeStampTS[[1]] <- strptime(timeStampTS[[1]], "%Y-%m-%d %H:%M:%S")
+    
+    avgVolTS <- cbind(busCapTS, timeStampTS, col="current")
+    colnames(avgVolTS) <- c("avgVol", "timestamps", 'type')
+    
+    busCapForecast <- ma(ts(busCapTS),order=3)
+    print(busCapForecast)
+    busCapForecast <- data.frame(busCapForecast)
+    # add 2 hours since k=3
+    timeStampForecast <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE) #+ 2*60*60 #you cant add it as it is a list of timestamp not just one
+    colnames(timeStampForecast) <- c("timestamp")
+    #convert column to POSIXct so that ggplot can  scale
+    timeStampForecast[[1]] <- strptime(timeStampForecast[[1]], "%Y-%m-%d %H:%M:%S")
+    
+    
+    avgVolForecast <- cbind(busCapForecast, timeStampForecast, col='forecast')
+    #print(avgVolForecast)
+    colnames(avgVolForecast) <- c("avgVol", "timestamps", 'type')
+    avgVolForecast <- avgVolForecast[3:nrow(avgVolForecast)-1,]
+    
+    busCapCombi <- rbind(avgVolTS, avgVolForecast)
+    #convert column to POSIXct so that ggplot can  scale
+    busCapCombi[[2]] <- strptime(busCapCombi[[2]], "%Y-%m-%d %H:%M:%S")
+    #print(busCapCombi)
+    
+    ggplot(busCapCombi, aes(x=timestamps, colour="forecast",group="forecast"))+ #, ymin = 1, ymax = 40
+      geom_line(aes(y=avgVol), color="red") +
+      theme_economist() + scale_color_economist() +
+      scale_color_manual(values=wes_palette(n=5, name="Zissou")) +
+      scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%H:%M"))+ #Scales the axis
+      labs(x = "Time", y="Number of people on the bus")+
+      theme(panel.background=element_rect(fill="lightblue"))
+  })
 
   
   output$forecastAcrossWeek <- renderPlot({
