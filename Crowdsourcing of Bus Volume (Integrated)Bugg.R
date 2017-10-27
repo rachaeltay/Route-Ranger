@@ -143,35 +143,35 @@ server = function(input, output, session) {
   
   observeEvent(input$submitQ,{
     
-    getCurrentTime = reactive({
-      #timeNow Manipulation ------------------------------------------------ben
-      getTime() # Changed - ZJ
-      #end of getting timeNow-----------------------------------------------ben
-    })
-    
-    #NEW CHANGES 
-    gettimeOnly = reactive({
-      #timeOOnly Manipulation ------------------------------------------------ben
-      datetime <- Sys.time()
-      datetime <- as.character(datetime)
-      tnow<- as.character(substr(datetime,12,16))
-      return(tnow)
-      #end of getting timeonly-----------------------------------------------ben
-    })
-    
-    
-    getdateOnly = reactive({
-      #timeOOnly Manipulation ------------------------------------------------ben
-      datetime <- Sys.time()
-      datetime <- as.character(datetime)
-      dnow<- as.character(substr(datetime,1,10))
-      return(dnow)
-      #end of getting timeonly-----------------------------------------------ben
-    })
-    today <- reactive({Sys.time})
-    getTimeQ <- reactive({return(gettimeOnly())})
-    getDateQ <- reactive({return(getdateOnly())})
-    #END OF TIME CHANGES
+    # getCurrentTime = reactive({
+    #   #timeNow Manipulation ------------------------------------------------ben
+    #   getTime() # Changed - ZJ
+    #   #end of getting timeNow-----------------------------------------------ben
+    # })
+    # 
+    # #NEW CHANGES 
+    # gettimeOnly = reactive({
+    #   #timeOOnly Manipulation ------------------------------------------------ben
+    #   datetime <- Sys.time()
+    #   datetime <- as.character(datetime)
+    #   tnow<- as.character(substr(datetime,12,16))
+    #   return(tnow)
+    #   #end of getting timeonly-----------------------------------------------ben
+    # })
+    # 
+    # 
+    # getdateOnly = reactive({
+    #   #timeOOnly Manipulation ------------------------------------------------ben
+    #   datetime <- Sys.time()
+    #   datetime <- as.character(datetime)
+    #   dnow<- as.character(substr(datetime,1,10))
+    #   return(dnow)
+    #   #end of getting timeonly-----------------------------------------------ben
+    # })
+    # 
+    # getTimeQ <- reactive({return(gettimeOnly())})
+    # getDateQ <- reactive({return(getdateOnly())})
+    # #END OF TIME CHANGES
     
     #Start of select data -------------------------------------------------->
     
@@ -209,8 +209,9 @@ server = function(input, output, session) {
       getBusId() # Changed - ZJ
     }) #end of getBUS -------------------------------------------->
     
+
     #for zongjie part
-    queryTable <- c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")
+    queryTable <- c("bus","stopId","busIdx","realidx","timeArr","pETA","rETA","sourceBusStop","destinationBusStop","timestamp")
     
     insertQuery <- eventReactive(input$submitQ, {
       
@@ -218,17 +219,19 @@ server = function(input, output, session) {
       queryTable$stopId <- isolate(input$startStop)
       queryTable$busIdx <- (getBus())%%7 #numeric
       queryTable$realidx <-  getBus()
-      queryTable$dateQ <- as.character(getDateQ())#added
-      queryTable$timeQ <- as.character(getTimeQ()) #
+      # queryTable$dateQ <- as.character(getDateQ())#added
+      # queryTable$timeQ <- as.character(getTimeQ()) #
       queryTable$timeArr <- ""
+      queryTable$pETA <- as.numeric(selectdata())
       queryTable$rETA <- 0
       
       queryTable$sourceBusStop <- isolate(input$startStop)
       queryTable$destinationbusStop <- isolate(input$endStop)
-      queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
+      queryTable$timestamp <- Sys.time()
+      #queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
       
       
-      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
+      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","timeArr","pETA","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
     })
     #end of sending data to db
     
@@ -236,7 +239,23 @@ server = function(input, output, session) {
     if(selectdata() == "Wrong Inputs"){}
     else{saveResponses(insertQuery())}
     #send data to db END
+   
+    #output
+    output$timestamp <- renderText({ 
+      input$submitQ
+      string <-  Sys.time()
+      paste(string)
+    })
     
+    output$var <- renderText({ 
+      input$submitQ
+      realeta = selectdata()
+      paste("Your ETA is", realeta, "minutes")
+    })
+    #endOutput
+    
+  })#end of Q
+  
     observeEvent(input$submitV, {
       
       getActualTime = reactive({
@@ -246,30 +265,59 @@ server = function(input, output, session) {
         anowmin <- as.numeric(substr(dtime,15,16))
         atimeNow <- (anowhr*60)+(anowmin)
         return(atimeNow)
-      })
+      })# get time now in minutes
       
       arrTime <- getActualTime() #use in for loop
       
-      queryData <- loadquery() #generate list
-      numQuery <- nrow(queryData)
-      print(numQuery)
+      queryData <- loadquery() #generate list of query
+      numQuery <- nrow(queryData) #number of queries(rows)
+      #print(numQuery)
       #print(queryData)
-      
       #print(queryData[1,])
       
       getMins <- function(data) {
-        hour <- as.numeric(substr(data,1,2))
-        min <- as.numeric(substr(data,4,5))
+        hour <- as.numeric(substr(data,12,13))
+        min <- as.numeric(substr(data,15,16))
         timequery <- (hour*60)+(min)
         return(timequery)
-      }#end of getMins
+      }#end of getMins, throw in hh:mm to get back mins
       
-      for (i in 1:numQuery){
+      whatBusIdx <- function(date) {
+        ctr <- 0
+        realeta <- 0
+        flag =TRUE
+        
+        firstbus <- loadtime(isolate(input$busService))
+        firstbusTime <- firstbus["start"][1,] #first bus time
+        whatTime <- getMins(date)
+        stopIndex <- loadindex(isolate(input$startStop))
+        currIndex <- stopIndex[isolate(input$busService)][1,]
+        if (currIndex == 0) { realeta <- "Wrong Inputs"}
+        
+        else {
+          while(flag){
+            eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - whatTime
+            if(eta > 0) {
+              flag = FALSE
+              realeta <- as.character(eta)
+            }#endif
+            
+            else {
+              ctr <- ctr +1
+            }#endelse
+          }#end of while
+        }#end of else
+        #add new modulo
+        return(ctr)
+      }
+      #return the correct busIdx
+      
+      for (i in 1:numQuery){ #
         instance <- queryData[i,]
-        qtime <- getMins(queryData[i,]["timeQ"][1,])
+        qtime <- getMins(queryData[i,]["timestamp"][1,])
         queryData[i,]["timeArr"][1,] <- arrTime
-        if (as.character(substr((queryData[i,]["dateQ"][1,]),1,10)) == getDateQ()){
-          if (queryData[i,]["realidx"][1,]==queryData[numQuery,]["realidx"][1,]){
+        if (as.character(substr((queryData[i,]["timestamp"][1,]),1,10)) == getDateQ()){
+          if (queryData[i,]["realidx"][1,]==whatBusIdx(queryData[i,]["timestamp"][1,])){
             reta <- arrTime - qtime
             queryData[i,]["rETA"][1,] <- reta
           }
@@ -277,7 +325,8 @@ server = function(input, output, session) {
       }
       
       print(queryData)
-      dataF<- data.frame(cbind(queryData["timeQ"],queryData["rETA"]))
+      
+      dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
       
       dataF<- cbind(ma=0,dataF)
       
@@ -310,9 +359,9 @@ server = function(input, output, session) {
         
       }
       
-      print(dataF)
+      #print(dataF)
       output$ma <- renderPlot(
-        ggplot(data=dataF,aes(x=timeQ,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
+        ggplot(data=dataF,aes(x=timestamp,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
         +geom_line(aes(y=ma),color="red")
       )
       
@@ -330,24 +379,12 @@ server = function(input, output, session) {
       #  
       # plotMA()
       
-    } ) #end of observerEvent submitV
+    }) #end of observerEvent submitV
     
-    #output
-    output$timestamp <- renderText({ 
-      input$submitQ
-      string <-  Sys.time()
-      paste(string)
-    })
-    
-    output$var <- renderText({ 
-      input$submitQ
-      realeta = selectdata()
-      paste("Your ETA is", realeta, "minutes")
-    })
-    #endOutput
+
     
     
-  })
+  
   
   #ENDBEN --------------------------------------------------------->
   
@@ -668,7 +705,38 @@ server = function(input, output, session) {
     }#end of else
    #add new modulo
     return(ctr)
-  }
+  }#end of get Bus Idx
+  
+  getCurrentTime = reactive({
+    #timeNow Manipulation ------------------------------------------------ben
+    getTime() # Changed - ZJ
+    #end of getting timeNow-----------------------------------------------ben
+  })
+  
+  #NEW CHANGES 
+  gettimeOnly = reactive({
+    #timeOOnly Manipulation ------------------------------------------------ben
+    datetime <- Sys.time()
+    datetime <- as.character(datetime)
+    tnow<- as.character(substr(datetime,12,16))
+    return(tnow)
+    #end of getting timeonly-----------------------------------------------ben
+  })
+  
+  
+  getdateOnly = reactive({
+    #timeOOnly Manipulation ------------------------------------------------ben
+    datetime <- Sys.time()
+    datetime <- as.character(datetime)
+    dnow<- as.character(substr(datetime,1,10))
+    return(dnow)
+    #end of getting timeonly-----------------------------------------------ben
+  })
+  
+  getTimeQ <- reactive({return(gettimeOnly())})
+  getDateQ <- reactive({return(getdateOnly())})
+  #END OF TIME CHANGES
+  
   
   getTime <- function(){ # Changed - ZJ
     datetime <- Sys.time()
