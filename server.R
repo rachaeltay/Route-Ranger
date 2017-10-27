@@ -50,13 +50,13 @@ responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity",
 databaseName <- "trrdb"
 databaseUrl <- "mongodb://localhost"
 
-dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
-
-dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
-
-dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
-
-dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
+# dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
+# 
+# dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
+# 
+# dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
+# 
+# dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
 #Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
@@ -68,22 +68,22 @@ options("googleAuthR.webapp.client_secret" = "SVsY07OxK6yQeaqtEcSIFPsh")
 #BEN Database
 #Load testRoute <- database with route details
 #routeidx <- mongo(db="trrdb", collection="testRoute", url = "mongodb://localhost")
-routeidx <- mongo(db=databaseName, collection="testRoute", url = databaseUrl)
+# routeidx <- mongo(db=databaseName, collection="testRoute", url = databaseUrl)
 
 #Load testTime <- database with starting time
 #stime <-mongo(db="trrdb", collection="testTime", url = "mongodb://localhost")
-stime <-mongo(db=databaseName, collection="testTime", url = databaseUrl)
+# stime <-mongo(db=databaseName, collection="testTime", url = databaseUrl)
 
 #Load finalstops (second last and last stop)
 #finale <-mongo(db="trrdb", collection="end", url = "mongodb://localhost")
-finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
+# finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
 #queryList <- mongo(db=databaseName, collection="queryList", url= databaseUrl)
 queryList <- mongo(db=databaseName, collection="queryBase", url= databaseUrl)
 #queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
-querydb <- mongo(db="local", collection="queryList")
+# querydb <- mongo(db="local", collection="queryList")
 
 
 
