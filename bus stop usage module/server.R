@@ -8,7 +8,7 @@ library(TTR)
 library(lubridate)
 library(scales)
 
-#queryList <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
+# queryList <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 queryList <- mongo(db = "local", collection = "queryList")
 
 server <- function(input, output) {
@@ -108,53 +108,82 @@ server <- function(input, output) {
     if (timeFrame == "Hourly") {
       boarding$timeFrame <- lapply(boarding$timeFrame$hour, {function(x) x = as.character(x)})
       boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start1, 0, 10), " ", x,":00:00")})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(x,":00")})
       alighting$timeFrame <- lapply(alighting$timeFrame$hour, {function(x) x = as.character(x)})
       alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start1, 0, 10), " ", x,":00:00")})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(x,":00")})
     } else if (timeFrame == "Daily") {
       boarding$timeFrame <- lapply(boarding$timeFrame$day, {function(x) x = as.character(x)})
       boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start1, 0, 8), x," 00:00:00")})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 8), x)})
       alighting$timeFrame <- lapply(alighting$timeFrame$day, {function(x) x = as.character(x)})
       alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start1, 0, 8), x," 00:00:00")})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 8), x)})
     } else if (timeFrame == "Weekly") {
-      boarding$timeFrame <- boarding$timeFrame$week
-      alighting$timeFrame <- alighting$timeFrame$week 
+      startWeek <- min(boarding$timeFrame$week)
+      endWeek <- max(boarding$timeFrame$week)
+      boarding$timeFrame <- lapply(boarding$timeFrame$week, {function(x) x = as.character(ymd(paste0(substring(start1, 0, 4), "01-01")) + lubridate::weeks(x))})
+      alighting$timeFrame <- lapply(alighting$timeFrame$week, {function(x) x = as.character(ymd(paste0(substring(start1, 0, 4), "01-01")) + lubridate::weeks(x))})
     } else if (timeFrame == "Monthly") {
       boarding$timeFrame <- lapply(boarding$timeFrame$month, {function(x) x = as.character(x)})
       boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start1, 0, 4), "-", x,"-01 00:00:00")})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})
       alighting$timeFrame <- lapply(alighting$timeFrame$month, {function(x) x = as.character(x)})
       alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start1, 0, 4), "-", x,"-01 00:00:00")})  
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})  
     }
     
+    boarding <- boarding[order(unlist(boarding$timeFrame)),]
+    alighting <- alighting[order(unlist(alighting$timeFrame)),]
     combined <- rbind(alighting, boarding)
+    combined <- combined[with(combined, order(combined$Group, unlist(combined$timeFrame))),]
+    View(boarding)
+    
+    if (timeFrame == "Daily") {
+      boardingSMAtimeFrame <- t(data.frame(tail(boarding$timeFrame, nrow(boarding)-2)))
+      alightingSMAtimeFrame <- t(data.frame(tail(alighting$timeFrame, nrow(alighting)-2)))
+      SMAtimeFrame <- list(rbind(alightingSMAtimeFrame, boardingSMAtimeFrame))
+      SMAtimeFrame <- lapply(SMAtimeFrame[1], {function(x) x = as.POSIXct(x)+days(2)})
+      
+      boardingSMA <- data.frame(SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from ", busStop))
+      colnames(boardingSMA) <- c("Count", "Group")
+      boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
+      alightingSMA <- data.frame(SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
+      colnames(alightingSMA) <- c("Count", "Group")
+      alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
+      
+      combinedSMA <- rbind(alightingSMA, boardingSMA)
+      combinedSMA <- cbind(SMAtimeFrame, combinedSMA)
+      colnames(combinedSMA) <- c("timeFrame", "Count", "Group")
+      combinedSMA$timeFrame <- sapply(combinedSMA$timeFrame, {function(x) x = as.character(x)})
+      combined <- rbind(combined, combinedSMA)
+    } else if (timeFrame == "Weekly") {
+      TS <- ts(c(boarding$Count), frequency = 52, start = c(as.numeric(substring(start1, 0, 4)), as.numeric(startWeek)))
+      # TS <- decompose(TS)
+      print(TS)
+    }
     
     # redo plot
-    plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group)) +geom_line(position=position_dodge(width=0.07))
-    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
-      theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))+
-      scale_y_continuous(labels = scales::unit_format("000", 1e-4)) #how to do this w/o hard coding?
+    
+    plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07))
+    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="num of riders", x="")+
+    theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))
   })
   
   output$plot <- renderPlot({
     getPlot()
+    
   })
 
   getNumBoarding <- eventReactive(input$genResult, {
     boarding <- isolate(queryList$aggregate(getBoarding()))
     count <- sum(boarding$count)
-    count
   })
 
   getNumAlighting <- eventReactive(input$genResult, {
     alighting <- isolate(queryList$aggregate(getAlighting()))
     count <- sum(alighting$count)
-    count
   })
 
   output$boarding <- renderText({
@@ -168,97 +197,7 @@ server <- function(input, output) {
   
   # test outputs and functions
   getTable <- eventReactive(input$genResult, {
-    busStop <- isolate(input$busStop)
-    timeFrame <- isolate(input$timeFrame)
-    start1 <- getStartDate(input$startDate1)
-    start2 <- getStartDate(input$startDate2)
-    end <- getEndDate(input$endDate)
-    
-    boarding <- queryList$aggregate(isolate(getBoarding()))
-    alighting <- queryList$aggregate(isolate(getAlighting()))
-
-    boarding <- data.frame(boarding)
-    boarding <- cbind(boarding, paste0("Boarding from ", busStop))
-    colnames(boarding) <- c("timeFrame", "Count", "Group")
-    alighting <- data.frame(alighting)
-    alighting <- cbind(alighting, paste0("alighting from ", busStop))
-    colnames(alighting) <- c("timeFrame", "Count", "Group")
-    
-    if (timeFrame == "Hourly") {
-      boarding$timeFrame <- lapply(boarding$timeFrame$hour, {function(x) x = as.character(x)})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start1, 0, 10), " ", x,":00:00")})
-      alighting$timeFrame <- lapply(alighting$timeFrame$hour, {function(x) x = as.character(x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start1, 0, 10), " ", x,":00:00")})
-    } else if (timeFrame == "Daily") {
-      boarding$timeFrame <- lapply(boarding$timeFrame$day, {function(x) x = as.character(x)})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start1, 0, 8), x," 00:00:00")})
-      alighting$timeFrame <- lapply(alighting$timeFrame$day, {function(x) x = as.character(x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start1, 0, 8), x," 00:00:00")})
-    } else if (timeFrame == "Weekly") {
-      boarding$timeFrame <- boarding$timeFrame$week
-      alighting$timeFrame <- alighting$timeFrame$week 
-    } else if (timeFrame == "Monthly") {
-      boarding$timeFrame <- lapply(boarding$timeFrame$month, {function(x) x = as.character(x)})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start1, 0, 4), "-", x,"-01 00:00:00")})
-      alighting$timeFrame <- lapply(alighting$timeFrame$month, {function(x) x = as.character(x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start1, 0, 4), "-", x,"-01 00:00:00")})  
-    }
-    
-    combined <- rbind(alighting, boarding)
-    combined <- combined[order(unlist(combined$timeFrame)),]
-    
-    if (timeFrame == "Hourly") {
-      combined$timeFrame <- as.Date(combined$timeFrame)
-    }
-
-    # if (timeFrame != "Hourly") {
-    #   # if break = hour then only time remaining
-    #   combined$timeFrame <- as.Date(combined$timeFrame)
-    #   boardingForecastTimeFrame <- data.frame(as.Date(tail(boarding$timeFrame,2))+2)
-    #   boardingForecastTimeFrame <- rbind(list(tail(boarding$timeFrame, nrow(boarding)-2)), boardingForecastTimeFrame)
-    #   alightingForecastTimeFrame <- data.frame(as.Date(tail(alighting$timeFrame,2))+2)
-    #   alightingForecastTimeFrame <- rbind(list(tail(alighting$timeFrame, nrow(alighting)-2)), alightingForecastTimeFrame)
-    # } else {
-    #   boardingForecastTimeFrame <- data.frame(as.POSIXct(tail(boarding$timeFrame,2))+2*60*60)
-    #   boardingForecastTimeFrame <- rbind(list(tail(boarding$timeFrame, nrow(boarding)-2)), boardingForecastTimeFrame)
-    #   alightingForecastTimeFrame <- data.frame(as.POSIXct(tail(alighting$timeFrame,2))+2*60*60)
-    #   alightingForecastTimeFrame <- rbind(list(tail(alighting$timeFrame, nrow(alighting)-2)), alightingForecastTimeFrame)
-    # }
-    # 
-    # boardingSMA <- data.frame(boardingForecastTimeFrame, SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from ", busStop))
-    # colnames(boardingSMA) <- c("timeFrame", "Count", "Group")
-    # boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
-    # alightingSMA <- data.frame(alightingForecastTimeFrame, SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
-    # colnames(alightingSMA) <- c("timeFrame", "Count", "Group")
-    # alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
-    # combinedSMA <- rbind(alightingSMA, boardingSMA)
-    # combinedSMA$timeFrame <- format(combinedSMA$timeFrame)
-    # 
-    # combined <- rbind(combined, combinedSMA)
-    # combined$timeFrame <- as.character(combined$timeFrame)
-    # 
-    # if (timeFrame == "Hourly") {
-    #   combined$timeFrame <- substring(combined$timeFrame, 12, 16)
-    # } else if (timeFrame == "Daily" || timeFrame == "Weekly") {
-    #   combined$timeFrame <- substring(combined$timeFrame, 6, 10)
-    # } else if (timeFrame == "Monthly") {
-    #   combined$timeFrame <- substring(combined$timeFrame, 0, 7)
-    # }
       
-    View(combined)
-    
-    # plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))  + geom_line()
-    # + geom_line(position=position_dodge(width=0.07))
-    # plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
-    #   theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
-    #         panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))+
-    #   scale_y_continuous(labels = scales::unit_format("000", 1e-4)) #how to do this w/o hard coding?
   })
   
   output$testText <- renderText({
@@ -266,8 +205,7 @@ server <- function(input, output) {
   })
   
   output$testTable <- DT::renderDataTable({
-    getTable()
+    # getTable()
   })
   
 }
-  

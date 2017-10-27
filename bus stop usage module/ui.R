@@ -7,7 +7,7 @@ ui <- fluidPage(
   titlePanel(div(h1("The Route Ranger"), style="color:red")),
   sidebarLayout(
     sidebarPanel(selectInput("busStop", "Select Bus Stop", sort(stops), selected="COM2"),
-                 selectInput("timeFrame", "Select Time Frame", timeIntervals, selected="Daily"),
+                 selectInput("timeFrame", "Select Time Frame", timeIntervals, selected="Weekly"),
                  conditionalPanel("input.timeFrame == 'Hourly'", dateInput("startDate1", "Choose a Day")),
                  conditionalPanel("input.timeFrame != 'Hourly'", dateInput("startDate2", "Starting Date"), dateInput("endDate", "Ending Date")),
                  actionButton("genResult" , "Show Stop Usage!")
