@@ -47,16 +47,16 @@ responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity",
 # databaseName <- "myshinydatabase"
 # databaseUrl <- "mongodb://127.0.0.1:27017"
 
-databaseName <- "trrdb"
-databaseUrl <- "mongodb://localhost"
+databaseName <- "trr"
+databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin"
 
-# dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
-# 
-# dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
-# 
-# dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
-# 
-# dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
+dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
+
+dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
+
+dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
+
+dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
 #Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
