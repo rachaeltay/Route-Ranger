@@ -24,8 +24,8 @@ avgVolTable <- c("busId", "busService", "startStop", "avgVol", "timestamp")
 responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity", "timestamp")
 # Shiny app with crowdsourcing form
 
-databaseName <- "trrdb"
-databaseUrl <- "mongodb://localhost"
+databaseName <- "myshinydatabase"
+databaseUrl <- "mongodb://127.0.0.1:27017"
 
 dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
 
