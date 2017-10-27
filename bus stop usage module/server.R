@@ -211,6 +211,11 @@ server <- function(input, output) {
     }
     
     combined <- rbind(alighting, boarding)
+    combined <- combined[order(unlist(combined$timeFrame)),]
+    
+    if (timeFrame == "Hourly") {
+      combined$timeFrame <- as.Date(combined$timeFrame)
+    }
 
     # if (timeFrame != "Hourly") {
     #   # if break = hour then only time remaining
@@ -248,7 +253,7 @@ server <- function(input, output) {
       
     View(combined)
     
-    # plot <- ggplot(combined, aes(x=timeFrame, y=Count, group=Group, color=Group))  + geom_line()
+    # plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))  + geom_line()
     # + geom_line(position=position_dodge(width=0.07))
     # plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
     #   theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
