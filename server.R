@@ -8,7 +8,6 @@
 library(shiny)
 library(shinythemes)
 library(ggthemes)
-# install.packages("shinythemes")
 library(shinydashboard)
 
 library(httr)
@@ -77,9 +76,9 @@ stime <-mongo(db=databaseName, collection="testTime", url = databaseUrl)
 finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
-#querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
+querydb <- mongo(db="trrdb", collection="queryBase", url= databaseUrl)
 
-queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
+#queryList <- mongo(url = , "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 
 
 
@@ -101,7 +100,7 @@ server <- function(input, output) {
       color = "yellow"
     )
   })
-  
+
   ####################   Google Login   ####################
   
   ## Global variables needed throughout the app
@@ -154,7 +153,17 @@ server <- function(input, output) {
   
   
   ####################   Dashboard Plot   ####################
+  loadStart <- function(data){
+    query <- querydb$find()
+    num <- nrow(query)
+    data <- query[num,]["stopId"][1,]
+    return(data)
+  }
   
+  loadStops <- function(filter) { #all the bus stops
+    allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
+    answer <- list(allStopsAvail["list"][1,]) 
+  }#loadStops
   
   # retrieve most recent query if not default to KR
   # with dbAvgVol is my db
@@ -176,6 +185,7 @@ server <- function(input, output) {
   # Initialize my_data
   print('Initialised')
   dfAvgVol <- initialiseData()
+  
   
   # Update every hour update all bus stop dataframes
   updateData <- function(){
@@ -227,7 +237,7 @@ server <- function(input, output) {
       labs(x = "Time", y="Number of people on the bus") +
       theme(panel.background=element_rect(fill="lightblue"))
   })
-  
+
   
   output$forecastAcrossWeek <- renderPlot({
     # holt winter across a week
@@ -266,31 +276,50 @@ server <- function(input, output) {
       #end of getting timeNow-----------------------------------------------ben
     })
     
-    #NEW CHANGES 
-    gettimeOnly = reactive({
-      #timeOOnly Manipulation ------------------------------------------------ben
-      datetime <- Sys.time()
-      datetime <- as.character(datetime)
-      tnow<- as.character(substr(datetime,12,16))
-      return(tnow)
-      #end of getting timeonly-----------------------------------------------ben
-    })
-    
-    
-    getdateOnly = reactive({
-      #timeOOnly Manipulation ------------------------------------------------ben
-      datetime <- Sys.time()
-      datetime <- as.character(datetime)
-      dnow<- as.character(substr(datetime,1,10))
-      return(dnow)
-      #end of getting timeonly-----------------------------------------------ben
-    })
-    today <- reactive({Sys.time})
-    getTimeQ <- reactive({return(gettimeOnly())})
-    getDateQ <- reactive({return(getdateOnly())})
-    #END OF TIME CHANGES
-    
     #Start of select data -------------------------------------------------->
+    pastQ <- loadquery()
+    if(nrow(pastQ)==0) {}
+    else{
+      pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"]))
+      print(pQ)
+      
+      pQuery<- cbind(ma=0,pQ)
+      print(pQuery)
+      
+      findUnique<- function(data, num){
+        val <- 0
+        comp <- 0
+        ctr <- 0
+        for(i in 1:num) {
+          if (ctr >= 3){break}
+          v <- data[num-i,]["rETA"][1,]
+          if (comp <= v){
+            comp <- v
+            ctr <- ctr +1
+            val <- val + comp
+          }
+          else{}
+        }
+        final <-  val/ctr
+        return(final)
+      }#findUnique end
+      
+      if(nrow(pQuery)>4){
+        for (row in 4:nrow(pQuery)) {
+          pQuery[row,]["ma"][1,] <- findUnique(pQuery,row)
+        }#end of row manipulation
+        pQuery[1,]["ma"][1,] <- pQuery[4,]["ma"][1,]
+        pQuery[2,]["ma"][1,] <- pQuery[4,]["ma"][1,]  
+        pQuery[3,]["ma"][1,] <- pQuery[4,]["ma"][1,]  
+        
+      }
+      
+      output$ma <- renderPlot(
+        ggplot(data=pQuery,aes(x=timestamp,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
+        +geom_line(aes(y=ma),color="red")
+      )
+    }#end of else
+    #Start of select data ------
     
     selectdata = reactive({
       ctr <- 0
@@ -335,19 +364,16 @@ server <- function(input, output) {
       queryTable$stopId <- isolate(input$startStop)
       queryTable$busIdx <- (getBus())%%7 #numeric
       queryTable$realidx <-  getBus()
-      # queryTable$dateQ <- as.character(getDateQ())#added
-      # queryTable$timeQ <- as.character(getTimeQ()) #
       queryTable$pETA <- as.numeric(selectdata())
       queryTable$timeArr <- ""
       queryTable$rETA <- 0
       
       queryTable$sourceBusStop <- isolate(input$startStop)
       queryTable$destinationbusStop <- isolate(input$endStop)
-      queryTable$timestamp <- today()
-      #queryTable$timestamp <- queryTable$timestamp <- paste0('{"$date": "',substring(as.character(Sys.time()), 0, 10),'T', substring(as.character(Sys.time()), 12, 19), 'Z','"}')
+      queryTable$timestamp <- Sys.time()
+
       
-      
-      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","dateQ","timeQ","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
+      insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","pETA","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
     })
     #end of sending data to db
     
@@ -355,6 +381,22 @@ server <- function(input, output) {
     if(selectdata() == "Wrong Inputs"){}
     else{saveResponses(insertQuery())}
     #send data to db END
+    
+    #output
+    output$timestamp <- renderText({ 
+      input$submitQ
+      string <-  Sys.time()
+      paste(string)
+    })
+    
+    output$var <- renderText({ 
+      input$submitQ
+      realeta = selectdata()
+      paste("Your ETA is", realeta, "minutes")
+    })
+    #endOutput
+    
+  })#end of q
     
     
     observeEvent(input$submitV, {
@@ -439,35 +481,10 @@ server <- function(input, output) {
       
       
       
-      # dataF<- data.frame(queryData$timeQ,queryData$rETA)
-      # 
-      # plotMA <- function(){
-      #   plot(dataF)
-      #   sma <- ma(dataF,order=3)
-      #   lines(sma,col="red")
-      # }
-      # 
-      #  
-      # plotMA()
-      
     } ) #end of observerEvent submitV
     
-    #output
-    output$timestamp <- renderText({ 
-      input$submitQ
-      string <-  Sys.time()
-      paste(string)
-    })
-    
-    output$var <- renderText({ 
-      input$submitQ
-      realeta = selectdata()
-      paste("Your ETA is", realeta, "minutes")
-    })
-    #endOutput
-    
-    
-  })
+  
+
   
   #ENDBEN --------------------------------------------------------->
   
@@ -820,6 +837,31 @@ server <- function(input, output) {
     return(ctr)
   }
   
+  #NEW CHANGES 
+  gettimeOnly = reactive({
+    #timeOOnly Manipulation ------------------------------------------------ben
+    datetime <- Sys.time()
+    datetime <- as.character(datetime)
+    tnow<- as.character(substr(datetime,12,16))
+    return(tnow)
+    #end of getting timeonly-----------------------------------------------ben
+  })
+  
+  
+  getdateOnly = reactive({
+    #timeOOnly Manipulation ------------------------------------------------ben
+    datetime <- Sys.time()
+    datetime <- as.character(datetime)
+    dnow<- as.character(substr(datetime,1,10))
+    return(dnow)
+    #end of getting timeonly-----------------------------------------------ben
+  })
+  
+  getTimeQ <- reactive({return(gettimeOnly())})
+  getDateQ <- reactive({return(getdateOnly())})
+  #END OF TIME CHANGES
+  
+  
   getTime <- function(){ # Changed - ZJ
     datetime <- Sys.time()
     datetime <- as.character(datetime)
@@ -843,9 +885,14 @@ server <- function(input, output) {
     query <- querydb$find(query = toString(toJSON(list(bus=input$busService,stopId=input$startStop,busIdx=(getBusId()%%7)),auto_unbox = TRUE)))
   }#end of load query
   
+
+  
   #new function for rachael to get start stop
   loadStart <- reactive({
-    return(isolate(input$startStop))
+    query <- querydb$find()
+    num <- nrow(query)
+    data <- query[num,]["stopId"][1,]
+    return(data)
   })
   
   
