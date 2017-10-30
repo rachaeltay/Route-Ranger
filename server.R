@@ -60,7 +60,7 @@ dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseU
 
 dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
 
-dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
+avgVolTrend <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
 # Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
@@ -198,7 +198,7 @@ server <- function(input, output, session) {
     for (busStop in unlist(busStops)){
       #print(busStop)
       #dfAvgVol[busStop] <- dbAvgVol$find(paste0('{"startStop": "', busStop, '"}'))
-      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
+      dfAvgVol[[busStop]] <- avgVolTrend$find(query = toString(toJSON(list(startStop = busStop, 
                                                          busService = bus),
                                                          auto_unbox = TRUE)))
       # if() {
@@ -222,7 +222,7 @@ server <- function(input, output, session) {
     for (busStop in unlist(busStops)){
       # pull from mongodb average data update of each stop
       # replace dataframe with new containing added data
-      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
+      dfAvgVol[[busStop]] <- avgVolTrend$find(query = toString(toJSON(list(startStop = busStop, 
                                                                         busService = bus),
                                                                    auto_unbox = TRUE)))
     }
