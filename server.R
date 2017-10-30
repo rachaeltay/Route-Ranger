@@ -9,7 +9,7 @@ library(shiny)
 library(shinythemes)
 library(ggthemes)
 library(shinydashboard)
-
+library(lubridate)
 library(httr)
 library(jsonlite)
 library(ggplot2)
@@ -50,13 +50,25 @@ responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity",
 databaseName <- "trr"
 databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin"
 
-dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
+# databaseName <- "trr"
+# databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017
+# ,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin"
 
-dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
+# dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
+# 
+# dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
+# 
+# dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
+# 
+# dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
-dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
+dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName )
 
-dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
+dbResponses <- mongo(collection = "responses",db = databaseName )
+
+dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName)
+
+dbAvgVol <- mongo(collection = "avgVolTrend",db ="trrdb")
 
 #Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
@@ -89,9 +101,6 @@ queryList <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-r
 
 # querydb <- mongo(db="local", collection="queryList")
 
-
-
-
 server <- function(input, output, session) {
   
   ####################   Dashboard Boxes   ####################
@@ -109,7 +118,7 @@ server <- function(input, output, session) {
       color = "yellow"
     )
   })
-
+  
   ####################   Google Login   ####################
   
   ## Global variables needed throughout the app
@@ -167,8 +176,8 @@ server <- function(input, output, session) {
     num <- nrow(query)
     
     data <- query[num,]["stopId"][1,]
-    # print("data")
-    # print(data)
+    print("data")
+    #print(data)
     return(data)
   }
   
@@ -176,13 +185,16 @@ server <- function(input, output, session) {
     allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
     answer <- list(allStopsAvail["list"][1,]) 
     print("answer")
-    print(answer)
+    return(answer)
+    #print(answer)
   }#loadStops
   
   # retrieve most recent query if not default to KR
   # with dbAvgVol is my db
   startStop <- loadStart()
   busStops <- loadStops()
+  #print("busStops")
+  #print(busStops)
   # View(busStops)
   # print(startStop)
   # print(busStops)
@@ -192,11 +204,12 @@ server <- function(input, output, session) {
     # for every bus stop I create a dataframe and populate data
     dfAvgVol <- list()
     for (busStop in unlist(busStops)){
-      print(busStop)
+      #print(busStop)
       #dfAvgVol[busStop] <- dbAvgVol$find(paste0('{"startStop": "', busStop, '"}'))
-      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
-                                                         busService = bus),
-                                                         auto_unbox = TRUE)))
+      print(busStop)
+      #NEED TO CHECK WITH RACH AND ZJ WHAT DATA THEY WANT
+      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list( stopId=busStop,busService = bus), auto_unbox = TRUE)))
+      
       # if() {
       #   dfAvgVol[busStop]
       # }
@@ -210,40 +223,60 @@ server <- function(input, output, session) {
   # Initialize my_data
   print('Initialised')
   dfAvgVol <- initialiseData("A1")
-  print(dfAvgVol)
-  
+  #print(dfAvgVol)
+  #print(dfAvgVol[["COM2"]])
   #Update every hour update all bus stop dataframes
   updateData <- function(bus){
     
     for (busStop in unlist(busStops)){
       # pull from mongodb average data update of each stop
       # replace dataframe with new containing added data
-      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list(startStop = busStop, 
-                                                                        busService = bus),
-                                                                   auto_unbox = TRUE)))
+      a <- dbAvgVol$find(query = toString(toJSON(list(startId = busStop, 
+                                                      busService = bus),
+                                                 auto_unbox = TRUE)))
+      
+      #print("A")
+      #print(a)
+      if(nrow(a)<1){dfAvgVol[[busStop]] <- list()}
+      else{
+        dfAvgVol[[busStop]] <- a
+        #print(dfAvgVol)
+      }
     }
+    ans <-  data.frame(dfAvgVol)
+    #print("Check dfavgvol")
+    #View(ans)
     
     # retrieve possibly new starting stop
     return(TRUE)
   }
   
   # Plot the current hours data along with forecast
+  
   output$forecastCurrent <- renderPlot({
-
+    
     print("Render Plot")
     invalidateLater(1800000, session) # invalidate every 30 minutes
     print("Update")
     updateData("A1")
-    startStop <- loadStart()
-    print(dfAvgVol[[startStop]])
-
+    
+    
+    
+    startStop <- loadStart() 
+    startStop <- "PGP"
+    
+    
+    print(typeof(dfAvgVol))
+    View(dfAvgVol)
+    
     # time across a day
-
+    
     # Time Series Object
     busCapTS <- dfAvgVol[[startStop]]$avgVol
     # Convert to Dataframe
     busCapTS <- data.frame(as.double(busCapTS))
     timeStampTS <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE)
+    View(timeStampTS)
     colnames(timeStampTS) <- c("timestamp")
     timeStampTS[[1]] <- strptime(timeStampTS[[1]], "%Y-%m-%d %H:%M:%S")
     
@@ -251,7 +284,7 @@ server <- function(input, output, session) {
     colnames(avgVolTS) <- c("avgVol", "timestamps", 'type')
     
     busCapForecast <- ma(ts(busCapTS),order=3)
-    print(busCapForecast)
+    #print(busCapForecast)
     busCapForecast <- data.frame(busCapForecast)
     # add 2 hours since k=3
     timeStampForecast <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE) #+ 2*60*60 #you cant add it as it is a list of timestamp not just one
@@ -270,15 +303,15 @@ server <- function(input, output, session) {
     busCapCombi[[2]] <- strptime(busCapCombi[[2]], "%Y-%m-%d %H:%M:%S")
     #print(busCapCombi)
     
-    ggplot(busCapCombi, aes(x=timestamps, colour="forecast",group="forecast"))+ #, ymin = 1, ymax = 40
+    ggplot(busCapCombi, aes(x=timestamps, colour="forecast",group=type))+ #, ymin = 1, ymax = 40
       geom_line(aes(y=avgVol), color="red") +
       theme_economist() + scale_color_economist() +
       scale_color_manual(values=wes_palette(n=5, name="Zissou")) +
-      scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%H:%M"))+ #Scales the axis
-      labs(x = "Time", y="Number of people on the bus")+
+      scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%I%p"))+ #Scales the axis
+      labs(x="Time", y="Number of people on the bus")+
       theme(panel.background=element_rect(fill="lightblue"))
   })
-
+  
   
   output$forecastAcrossWeek <- renderPlot({
     # holt winter across a week
@@ -306,6 +339,70 @@ server <- function(input, output, session) {
     
   })
   
+  ####################   Changing Select Inputs by Bus Service  ####################
+  observe({
+    if(input$busService == "A1") {
+      updateSelectInput(session, "startStop",
+                        label = paste("Choose Your Starting Bus Stop"),
+                        choices = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
+                                    "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP")
+                        #selected = tail(input$startStop)
+      )
+      updateSelectInput(session, "endStop",
+                        label = paste("Choose Your Destination Bus Stop"),
+                        choices = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
+                                    "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP")
+                        #selected = tail(input$endStop)
+      )
+    }
+    else if(input$busService == "A2") {
+      updateSelectInput(session, "startStop",
+                        label = paste("Choose Your Starting Bus Stop"),
+                        choices = c("PGP", "PGP_Hse_14_15", "PGP_Hse_12", "Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre",
+                                    "Opp_YIH", "Museum", "UHC", "Opp_UHall", "S17", "Opp_NUH", "Opp_Kent_Ridge_MRT", "PGPR")
+                        #selected = tail(input$startStop)
+      )
+      updateSelectInput(session, "endStop",
+                        label = paste("Choose Your Destination Bus Stop"),
+                        choices = c("PGP", "PGP_Hse_14_15", "PGP_Hse_12", "Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre",
+                                    "Opp_YIH", "Museum", "UHC", "Opp_UHall", "S17", "Opp_NUH", "Opp_Kent_Ridge_MRT", "PGPR")
+                        #selected = tail(input$endStop)
+      )
+    }
+    else if(input$busService == "D1") {
+      updateSelectInput(session, "startStop",
+                        label = paste("Choose Your Starting Bus Stop"),
+                        choices = c("Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre", "Opp_YIH", "UTown", "Museum", "YIH",
+                                    "Central_Library", "LT13", "AS7", "COM2", "BIZ2" )
+                        #selected = tail(input$startStop)
+      )
+      updateSelectInput(session, "endStop",
+                        label = paste("Choose Your Destination Bus Stop"),
+                        choices = c("Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre", "Opp_YIH", "UTown", "Museum", "YIH",
+                                    "Central_Library", "LT13", "AS7", "COM2", "BIZ2" )
+                        #selected = tail(input$endStop)
+      )
+    }
+    else if(input$busService == "D2") {
+      updateSelectInput(session, "startStop",
+                        label = paste("Choose Your Starting Bus Stop"),
+                        choices = c("PGP", "Kent_Ridge_MRT", "LT29", "UHall", "Opp_UHC", "Museum", "UTown", "UHC", "Opp_UHall", "S17",
+                                    "Opp_Kent_Ridge_MRT", "PGPR", "CP11" )
+                        #selected = tail(input$startStop)
+      )
+      updateSelectInput(session, "endStop",
+                        label = paste("Choose Your Destination Bus Stop"),
+                        choices = c("PGP", "Kent_Ridge_MRT", "LT29", "UHall", "Opp_UHC", "Museum", "UTown", "UHC", "Opp_UHall", "S17",
+                                    "Opp_Kent_Ridge_MRT", "PGPR", "CP11" )
+                        #selected = tail(input$endStop)
+      )
+    }
+  })#End of observe
+  ##############################################################
+  
+  output$click <- renderText({
+    "Click to refresh, otherwise wait 10s after Submit Crowd Level"
+  })# End of output$click
   
   #STARTBEN ------------------------------------------------------->
   
@@ -357,7 +454,12 @@ server <- function(input, output, session) {
       
       output$ma <- renderPlot(
         ggplot(data=pQuery,aes(x=timestamp,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
-        +geom_line(aes(y=ma),color="red")
+        +geom_line(aes(y=ma),color="red")+
+          theme_economist() + scale_color_economist() +
+          scale_color_manual(values=wes_palette(n=5, name="Zissou")) +
+          #scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%H:%M"))+ #Scales the axis
+          labs(x = "Time Of Query", y="Actual ETA")+
+          theme(panel.background=element_rect(fill="lightblue"))
       )
     }#end of else
     #Start of select data ------
@@ -412,7 +514,7 @@ server <- function(input, output, session) {
       queryTable$sourceBusStop <- isolate(input$startStop)
       queryTable$destinationbusStop <- isolate(input$endStop)
       queryTable$timestamp <- Sys.time()
-
+      
       
       insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realidx","pETA","timeArr","rETA","sourceBusStop","destinationBusStop","timestamp")],auto_unbox = TRUE)
     })
@@ -438,158 +540,99 @@ server <- function(input, output, session) {
     #endOutput
     
   })#end of q
+  
+  
+  observeEvent(input$submitV, {
     
+    getActualTime = reactive({
+      dtime <- Sys.time()
+      dtime <- as.character(dtime)
+      anowhr <- as.numeric(substr(dtime,12,13))
+      anowmin <- as.numeric(substr(dtime,15,16))
+      atimeNow <- (anowhr*60)+(anowmin)
+      return(atimeNow)
+    })
     
-    observeEvent(input$submitV, {
-      
-      getActualTime = reactive({
-        dtime <- Sys.time()
-        dtime <- as.character(dtime)
-        anowhr <- as.numeric(substr(dtime,12,13))
-        anowmin <- as.numeric(substr(dtime,15,16))
-        atimeNow <- (anowhr*60)+(anowmin)
-        return(atimeNow)
-      })
-      
-      arrTime <- getActualTime() #use in for loop
-      
-      queryData <- loadquery() #generate list
-      numQuery <- nrow(queryData)
-      print(numQuery)
-      #print(queryData)
-      
-      #print(queryData[1,])
-      
-      getMins <- function(data) {
-        hour <- as.numeric(substr(data,12,13))
-        min <- as.numeric(substr(data,15,16))
-        timequery <- (hour*60)+(min)
-        return(timequery)
-      }#end of getMins
-      
-      getMins <- function(data) {
-        hour <- as.numeric(substr(data,12,13))
-        min <- as.numeric(substr(data,15,16))
-        timequery <- (hour*60)+(min)
-        return(timequery)
-      }#end of getMins
-      
-      for (i in 1:numQuery){ #
-        instance <- queryData[i,]
-        qtime <- getMins(queryData[i,]["timestamp"][1,])
-        queryData[i,]["timeArr"][1,] <- arrTime
-        if (as.character(substr((queryData[i,]["timestamp"][1,]),1,10)) == getDateQ()){
-          if (queryData[i,]["realidx"][1,]==whatBusIdx(queryData[i,]["timestamp"][1,])){
-            reta <- arrTime - qtime
-            queryData[i,]["rETA"][1,] <- reta
-          }
+    arrTime <- getActualTime() #use in for loop
+    
+    queryData <- loadquery() #generate list
+    numQuery <- nrow(queryData)
+    print(numQuery)
+    #print(queryData)
+    
+    #print(queryData[1,])
+    
+    getMins <- function(data) {
+      hour <- as.numeric(substr(data,12,13))
+      min <- as.numeric(substr(data,15,16))
+      timequery <- (hour*60)+(min)
+      return(timequery)
+    }#end of getMins
+    
+    getMins <- function(data) {
+      hour <- as.numeric(substr(data,12,13))
+      min <- as.numeric(substr(data,15,16))
+      timequery <- (hour*60)+(min)
+      return(timequery)
+    }#end of getMins
+    
+    for (i in 1:numQuery){ #
+      instance <- queryData[i,]
+      qtime <- getMins(queryData[i,]["timestamp"][1,])
+      queryData[i,]["timeArr"][1,] <- arrTime
+      if (as.character(substr((queryData[i,]["timestamp"][1,]),1,10)) == getDateQ()){
+        if (queryData[i,]["realidx"][1,]==whatBusIdx(queryData[i,]["timestamp"][1,])){
+          reta <- arrTime - qtime
+          queryData[i,]["rETA"][1,] <- reta
         }
       }
-      
-      print(queryData)
-      dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
-      
-      dataF<- cbind(ma=0,dataF)
-      
-      findUnique<- function(data, num){
-        val <- 0
-        comp <- 0
-        ctr <- 0
-        for(i in 1:num) {
-          if (ctr >= 3){break}
-          v <- data[num-i,]["rETA"][1,]
-          if (comp <= v){
-            comp <- v
-            ctr <- ctr +1
-            val <- val + comp
-            
-          }
-          else{}
-        }
-        final <-  val/ctr
-        return(final)
-      }#findUnique end
-      
-      if(nrow(dataF)>4){
-        for (row in 4:nrow(dataF)) {
-          dataF[row,]["ma"][1,] <- findUnique(dataF,row)
-        }#end of row manipulation
-        dataF[1,]["ma"][1,] <- dataF[4,]["ma"][1,]
-        dataF[2,]["ma"][1,] <- dataF[4,]["ma"][1,]  
-        dataF[3,]["ma"][1,] <- dataF[4,]["ma"][1,]  
-        
-      }
-      
-      print(dataF)
-      output$ma <- renderPlot(
-        ggplot(data=dataF,aes(x=timestamp,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
-        +geom_line(aes(y=ma),color="red")
-      )
-      
-      
-      
-      
-    } ) #end of observerEvent submitV
+    }
     
-    observe({
-      if(input$busService == "A1") {
-        updateSelectInput(session, "startStop",
-                          label = paste("Choose Your Starting Bus Stop"),
-                          choices = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
-                                      "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP")
-                          #selected = tail(input$startStop)
-        )
-        updateSelectInput(session, "endStop",
-                          label = paste("Choose Your Destination Bus Stop"),
-                          choices = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
-                                      "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP")
-                          #selected = tail(input$endStop)
-        )
+    print(queryData)
+    dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
+    
+    dataF<- cbind(ma=0,dataF)
+    
+    findUnique<- function(data, num){
+      val <- 0
+      comp <- 0
+      ctr <- 0
+      for(i in 1:num) {
+        if (ctr >= 3){break}
+        v <- data[num-i,]["rETA"][1,]
+        if (comp <= v){
+          comp <- v
+          ctr <- ctr +1
+          val <- val + comp
+          
+        }
+        else{}
       }
-      else if(input$busService == "A2") {
-        updateSelectInput(session, "startStop",
-                          label = paste("Choose Your Starting Bus Stop"),
-                          choices = c("PGP", "PGP_Hse_14_15", "PGP_Hse_12", "Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre",
-                                      "Opp_YIH", "Museum", "UHC", "Opp_UHall", "S17", "Opp_NUH", "Opp_Kent_Ridge_MRT", "PGPR")
-                          #selected = tail(input$startStop)
-        )
-        updateSelectInput(session, "endStop",
-                          label = paste("Choose Your Destination Bus Stop"),
-                          choices = c("PGP", "PGP_Hse_14_15", "PGP_Hse_12", "Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre",
-                                      "Opp_YIH", "Museum", "UHC", "Opp_UHall", "S17", "Opp_NUH", "Opp_Kent_Ridge_MRT", "PGPR")
-                          #selected = tail(input$endStop)
-        )
-      }
-      else if(input$busService == "D1") {
-        updateSelectInput(session, "startStop",
-                          label = paste("Choose Your Starting Bus Stop"),
-                          choices = c("Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre", "Opp_YIH", "UTown", "Museum", "YIH",
-                                      "Central_Library", "LT13", "AS7", "COM2", "BIZ2" )
-                          #selected = tail(input$startStop)
-        )
-        updateSelectInput(session, "endStop",
-                          label = paste("Choose Your Destination Bus Stop"),
-                          choices = c("Opp_HSSML", "Opp_NUSS", "COM2", "Ventus", "Computer_Centre", "Opp_YIH", "UTown", "Museum", "YIH",
-                                      "Central_Library", "LT13", "AS7", "COM2", "BIZ2" )
-                          #selected = tail(input$endStop)
-        )
-      }
-      else if(input$busService == "D2") {
-        updateSelectInput(session, "startStop",
-                          label = paste("Choose Your Starting Bus Stop"),
-                          choices = c("PGP", "Kent_Ridge_MRT", "LT29", "UHall", "Opp_UHC", "Museum", "UTown", "UHC", "Opp_UHall", "S17",
-                                      "Opp_Kent_Ridge_MRT", "PGPR", "CP11" )
-                          #selected = tail(input$startStop)
-        )
-        updateSelectInput(session, "endStop",
-                          label = paste("Choose Your Destination Bus Stop"),
-                          choices = c("PGP", "Kent_Ridge_MRT", "LT29", "UHall", "Opp_UHC", "Museum", "UTown", "UHC", "Opp_UHall", "S17",
-                                      "Opp_Kent_Ridge_MRT", "PGPR", "CP11" )
-                          #selected = tail(input$endStop)
-        )
-      }
-    })#End of observe
-
+      final <-  val/ctr
+      return(final)
+    }#findUnique end
+    
+    if(nrow(dataF)>4){
+      for (row in 4:nrow(dataF)) {
+        dataF[row,]["ma"][1,] <- findUnique(dataF,row)
+      }#end of row manipulation
+      dataF[1,]["ma"][1,] <- dataF[4,]["ma"][1,]
+      dataF[2,]["ma"][1,] <- dataF[4,]["ma"][1,]  
+      dataF[3,]["ma"][1,] <- dataF[4,]["ma"][1,]  
+      
+    }
+    
+    print(dataF)
+    output$ma <- renderPlot(
+      ggplot(data=dataF,aes(x=timestamp,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
+      +geom_line(aes(y=ma),color="red")
+    )
+    
+    
+    
+    
+  } ) #end of observerEvent submitV
+  
   
   #ENDBEN --------------------------------------------------------->
   
@@ -599,10 +642,10 @@ server <- function(input, output, session) {
   formData <- eventReactive(input$submitV, {
     
     responseTable$busId <- getBusId()
-    responseTable$busService <- input$busService
-    responseTable$startStop <- input$startStop
-    responseTable$endStop <- input$endStop
-    responseTable$busCapacity <- input$busCapacity
+    responseTable$busService <- isolate(input$busService)
+    responseTable$startStop <- isolate(input$startStop)
+    responseTable$endStop <- isolate(input$endStop)
+    responseTable$busCapacity <- isolate(input$busCapacity)
     responseTable$timestamp <- myTimestamp()
     # Converts List to JSON, and unboxes each element to primitive
     data <- toJSON(responseTable[c("busId", "busService", "startStop", "endStop",
@@ -615,11 +658,12 @@ server <- function(input, output, session) {
     # AND the busService of all responses are the same 
     # AND busId of all responses are the same
     # (When the bus reached the endStop of other users)
-    dbDyResponses$remove(query = toString(toJSON(list(endStop = input$startStop,
-                                                      busService = input$busService,
+    dbDyResponses$remove(query = toString(toJSON(list(endStop = isolate(input$startStop),
+                                                      busService = isolate(input$busService),
                                                       busId = getBusId()),
                                                  auto_unbox = TRUE))) #TBC filter include BusId
     insertDyResponse(formData()) #Inserting data into database
+    print("Submitted")
   })# End of observeEvent
   
   #Pre-cond: Waits for submit button to be depressed
@@ -627,35 +671,35 @@ server <- function(input, output, session) {
   #           the calculated avgVol 
   dyAvgVolData <- eventReactive(input$submitV, {
     dyAvgVolTable$busId <- getBusId()
-    dyAvgVolTable$busService <- input$busService 
+    dyAvgVolTable$busService <- isolate(input$busService)
     #loadDyResponses(filterBusService, filterBusId, date)
     dyAvgVolTable$dyAvgVol <- ceiling(aggData(loadDyResponses("all", getBusId(), toString(as.Date(Sys.Date())))$busCapacity)/3*40) 
-    dyAvgVolTable$startStop <- input$startStop
-    dyAvgVolTable$endStop <- input$endStop
+    dyAvgVolTable$startStop <- isolate(input$startStop)
+    dyAvgVolTable$endStop <- isolate(input$endStop)
     dyAvgVolTable$timestamp <- myTimestamp() #ISODate timestamp
     # Converts List to JSON, and unboxes each element from List to primitive
     data <- toJSON(dyAvgVolTable[c("busId","busService", "startStop", "endStop",
                                    "dyAvgVol", "timestamp")], auto_unbox = TRUE)
   })# End of dyAvgVolData
   
-  #Convenient Deletion of all rows - will be removed
-  observeEvent(input$clear, {
-    
-    data <- queryList$remove('{}')
-    
-    dbDyResponses$remove(query = "{}")
-    dbResponses$remove(query = "{}")
-    dbDyAvgVol$remove(query = "{}")
-    #dbAvgVol$remove(query = "{}")
-    # Inserts buffer data
-    buffer()
-  })# End of observeEvent
+  # #Convenient Deletion of all rows - will be removed
+  # observeEvent(input$clear, {
+  #   
+  #   data <- queryList$remove('{}')
+  #   
+  #   dbDyResponses$remove(query = "{}")
+  #   dbResponses$remove(query = "{}")
+  #   dbDyAvgVol$remove(query = "{}")
+  #   #dbAvgVol$remove(query = "{}")
+  #   # Inserts buffer data
+  #   buffer()
+  # })# End of observeEvent
   
   # observe({
   #   #Pre-cond: Waits for submitV button to be depressed
   #   # #Post-cond: Renders data table of all previous responses
   #   output$responses <- renderDataTable({
-  #     input$submitV
+  #     isolate(input$submitV)
   #     loadDyResponses("all", getBusId(), toString(as.Date(Sys.Date()))) #loadDyResponses(filterBusService, filterBusId, date)
   #   })# End of output$responses
   # })# End of observe
@@ -666,39 +710,41 @@ server <- function(input, output, session) {
     invalidateLater(timeMS, session)
   }
   
-  observe({
-    #Pre-cond: Waits for submitV button to be depressed
-    # #Post-cond: Renders data table of all previous responses
-    output$responses <- renderDataTable({
-      input$submitV
-      loadDyResponses("all", getBusId()) # #loadDyResponses(filterBusService, busId)
-    })
-  })
+  # observe({
+  #   #Pre-cond: Waits for submitV button to be depressed
+  #   # #Post-cond: Renders data table of all previous responses
+  #   output$responses <- renderDataTable({
+  #     isolate(input$submitV)
+  #     loadDyResponses("all", getBusId()) # #loadDyResponses(filterBusService, busId)
+  #   })
+  # })
   
   #Pre-cond: Waits for submitV button to be depressed
   #Post-cond: render plot of avgVol over time/ busstop
   output$graph <- renderPlot({
+    #print("Initialising Plot")
     input$update
     invalidateLater(10000, session) #10000ms = 10s
-    dyAvgVol <- loadDyAvgVol(input$busService, getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
+    dyAvgVol <- loadDyAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
+    #print("Loading Plot")
     if(nrow(dyAvgVol) == 0) {
       buffer()
     }# End of if
     # if not (Secondlast Stop && number of rows in average is 3)
-    if(!(input$startStop == getSecondLastStop(input$busService) && 
+    if(!(isolate(input$startStop) == getSecondLastStop(isolate(input$busService)) && 
          nrow(dyAvgVol) == 3)) { 
       isolate(insertDyAvgVol(dyAvgVolData()))
     }# End of if
-    average <- loadDyAvgVol(input$busService, getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
+    average <- loadDyAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
     ########## Algorithm to extract sampled avgVol at each busStop for plotting ##########
-    print("average")
-    print(average)
+    # print("average")
+    # print(average)
     #check if false data has been inserted
     if(average['startStop'][nrow(average)-1,] == "last" &&
        average['endStop'][nrow(average)-1,] == "last") { 
       #inserts busCapacity for avgVol at Last Stop
       insertAvgVol(toJSON(list(busId = getBusId(), busService = average['busService'][1,], 
-                               startStop = getLastStop(input$busService),  
+                               startStop = getLastStop(isolate(input$busService)),  
                                avgVol = 1, timestamp = myTimestamp()), auto_unbox = TRUE)) 
       dbDyAvgVol$remove(query = "{}") #clears false data
       # Inserts buffer data
@@ -718,14 +764,14 @@ server <- function(input, output, session) {
                                    "timestamp")], auto_unbox = TRUE)
       insertAvgVol(data) #insert sampled data
     }# End of elseif
-    plotAvgVol <- loadAvgVol(input$busService, getBusId(), toString(as.Date(Sys.Date()))) #loadAvgVol(filterBusService, filterBusId, date)
+    plotAvgVol <- loadAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date()))) #loadAvgVol(filterBusService, filterBusId, date)
     # Checks when the bus has reached second last stop
     if(nrow(plotAvgVol) != 0 && 
-       plotAvgVol['startStop'][nrow(plotAvgVol),] == getSecondLastStop(input$busService)) { 
-      dbDyAvgVol$remove(query = toString(toJSON(list(busService = input$busService, busId = getBusId()), 
+       plotAvgVol['startStop'][nrow(plotAvgVol),] == getSecondLastStop(isolate(input$busService))) { 
+      dbDyAvgVol$remove(query = toString(toJSON(list(busService = isolate(input$busService), busId = getBusId()), 
                                                 auto_unbox = TRUE))) 
       #Inserts false data to indicate bus has reached last stop
-      dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = input$busService, startStop = "last", endStop = "last", 
+      dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "last", endStop = "last", 
                                     dyAvgVol = 1, timestamp = myTimestamp()), auto_unbox = TRUE)) 
     }# End of if
     ####################################################################################
@@ -734,16 +780,16 @@ server <- function(input, output, session) {
       ggplot(data=plotAvgVol, aes(x= factor(startStop, levels=unique(startStop)), y = avgVol, ymin = 0, ymax = 40, fill = avgVol)) + 
         scale_y_continuous(limit = c(0, 40), expand = c(0,0)) + scale_x_discrete(expand = c(0,0)) +
         geom_bar(stat = "identity") + labs(x = "Bus Stops") +
-        ggtitle(paste0(input$busService," ", "Bus ID: ", "(", getBusId(), ")")) + 
+        ggtitle(paste0(isolate(input$busService)," ", "Bus ID: ", "(", getBusId(), ")")) + 
         theme(axis.text.x = element_text(color="black", size=10, angle=45, vjust = 0.5)) +
         scale_fill_continuous(low="green", high="red") +
         theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
     }# End of if
   })# End of output$graph
   
-  output$avgVolTrendPlot <- renderPlot({
+  output$avgVolPerRoute <- renderPlot({
     #loadAvgVol(filterBusService, filterBusId, date = "")
-    data <- loadAvgVol(input$busService, as.numeric(input$busId)) # *** use for real data ***
+    data <- loadAvgVol(isolate(input$busService), as.numeric(input$busId)) # *** use for real data ***
     # print("data")
     # print(data)
     ggplot(data, aes(x=factor(startStop, levels=unique(startStop)), y=avgVol)) +
@@ -751,34 +797,34 @@ server <- function(input, output, session) {
       geom_smooth(method = "auto", aes(group = 1), se = TRUE, span = 0.5) +
       scale_y_continuous(limits = c(0, 40)) +
       labs(x = "Bus Stops") +
-      ggtitle(paste0(input$busService)) +
+      ggtitle(paste0(isolate(input$busService))) +
       theme(axis.text.x = element_text(color="black", size=12, angle=90, vjust = 0.5)) +
       theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
   })# End of output$avgVolTrendPlot
   
-  output$realTimeRiggedData <- renderPlot({
-    
-    stops <- data.frame("startStop" = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
-                                        "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP"))
-    #loadAvgVol(filterBusService, filterBusId, date = "")
-    data <- loadAvgVol(input$busService, as.numeric(input$busId)) # *** use for real data ***
-    realTimeAvgVol <- data.frame("startStop" = "", "avgVol" = 0)[FALSE,]
-    for(stop in stops$startStop) {
-      temp <- data[data$startStop == stop,] #filter rows of the same stop
-      avgVol <- min(max(0,ceiling(aggData(temp$avgVol))), 40) #get average of the avgVolTrend for same stop
-      realTimeAvgVol <- rbind(realTimeAvgVol, data.frame("startStop" = stop, "avgVol" = avgVol)) #new dataframe for plotting
-      if(stop == stops[nrow(stops)-3,]) { # *** Determines at which bus stop to discontinue graph ***
-        break
-      }# End of if
-    }# End of for
-    ggplot(realTimeAvgVol, aes(x= factor(startStop, levels=unique(startStop)), y = avgVol, ymin = 0, ymax = 40, fill = avgVol)) +
-      scale_y_continuous(limit = c(0, 40), expand = c(0,0)) + scale_x_discrete(expand = c(0,0)) +
-      geom_bar(stat = "identity") + labs(x = "Bus Stops") +
-      theme(axis.text.x = element_text(color="black", size=12, angle=90, vjust = 0.5)) +
-      ggtitle(paste0(input$busService)) +
-      scale_fill_continuous(low="green", high="red") +
-      theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
-  })# End of output$realTimeRiggedData
+  # output$realTimeRiggedData <- renderPlot({
+  #   
+  #   stops <- data.frame("startStop" = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
+  #                                       "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP"))
+  #   #loadAvgVol(filterBusService, filterBusId, date = "")
+  #   data <- loadAvgVol(input$busService, as.numeric(input$busId)) # *** use for real data ***
+  #   realTimeAvgVol <- data.frame("startStop" = "", "avgVol" = 0)[FALSE,]
+  #   for(stop in stops$startStop) {
+  #     temp <- data[data$startStop == stop,] #filter rows of the same stop
+  #     avgVol <- min(max(0,ceiling(aggData(temp$avgVol))), 40) #get average of the avgVolTrend for same stop
+  #     realTimeAvgVol <- rbind(realTimeAvgVol, data.frame("startStop" = stop, "avgVol" = avgVol)) #new dataframe for plotting
+  #     if(stop == stops[nrow(stops)-3,]) { # *** Determines at which bus stop to discontinue graph ***
+  #       break
+  #     }# End of if
+  #   }# End of for
+  #   ggplot(realTimeAvgVol, aes(x= factor(startStop, levels=unique(startStop)), y = avgVol, ymin = 0, ymax = 40, fill = avgVol)) +
+  #     scale_y_continuous(limit = c(0, 40), expand = c(0,0)) + scale_x_discrete(expand = c(0,0)) +
+  #     geom_bar(stat = "identity") + labs(x = "Bus Stops") +
+  #     theme(axis.text.x = element_text(color="black", size=12, angle=90, vjust = 0.5)) +
+  #     ggtitle(paste0(input$busService)) +
+  #     scale_fill_continuous(low="green", high="red") +
+  #     theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
+  # })# End of output$realTimeRiggedData
   
   
   ###################### FUNCTIONS ######################
@@ -793,11 +839,11 @@ server <- function(input, output, session) {
   # })# End of output$stats
   
   getLastStop <- function(busService){ # Changed - ZJ
-    busStop <- finale$find(query = toString(toJSON(list(busService = input$busService), auto_unbox = TRUE)))['last'][1,]
+    busStop <- finale$find(query = toString(toJSON(list(busService = isolate(input$busService)), auto_unbox = TRUE)))['last'][1,]
   }# End of getLastStop()
   
   getSecondLastStop <- function(busService){ # Changed - ZJ
-    busStop <- finale$find(query = toString(toJSON(list(busService = input$busService), auto_unbox = TRUE)))['secondlast'][1,]
+    busStop <- finale$find(query = toString(toJSON(list(busService = isolate(input$busService)), auto_unbox = TRUE)))['secondlast'][1,]
   }# End of getSecondLastStop()
   
   #Pre-cond: nil
@@ -893,11 +939,11 @@ server <- function(input, output, session) {
   }# End of aggData()
   
   buffer <- function() {
-    dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = input$busService, startStop = "", endStop = " ", 
+    dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ", 
                                   dyAvgVol = 0, timestamp = myTimestamp()), auto_unbox = TRUE))
-    dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = input$busService, startStop = "", endStop = " ", 
+    dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ", 
                                   dyAvgVol = 0, timestamp = myTimestamp()), auto_unbox = TRUE))
-    dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = input$busService, startStop = "", endStop = " ", 
+    dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ", 
                                   dyAvgVol = 0, timestamp = myTimestamp()), auto_unbox = TRUE))
   }# End of buffer
   
@@ -1036,14 +1082,14 @@ server <- function(input, output, session) {
   }#end of loadtime
   
   loadindex <- function(filter) {
-    stopIdx <- routeidx$find(query = toString(toJSON(list(stopId=input$startStop),auto_unbox = TRUE)))   
+    stopIdx <- routeidx$find(query = toString(toJSON(list(stopId=isolate(input$startStop)),auto_unbox = TRUE)))   
   }#end of loadindex
   
   loadquery <- function(filter) {
-    query <- queryList$find(query = toString(toJSON(list(bus=input$busService,stopId=input$startStop,busIdx=(getBusId()%%7)),auto_unbox = TRUE)))
+    query <- queryList$find(query = toString(toJSON(list(bus=input$busService,stopId=isolate(input$startStop),busIdx=(getBusId()%%7)),auto_unbox = TRUE)))
   }#end of load query
   
-
+  
   
   #new function for rachael to get start stop
   loadStart <- reactive({
@@ -1082,104 +1128,160 @@ server <- function(input, output, session) {
   }
   
   getBoarding <- reactive({
-    shiny::validate(
-      need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
-    )
+    if (input$timeFrame != "Hourly") {
+      shiny::validate(
+        need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
+      )
+    }
     
     if (input$timeFrame == "Hourly") {
-      query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"},"$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}')
+      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"}, "$lt":{"$date":"', getEndDate(input$startDate1+1), '"}}}},
+                      {"$project": {"hour": {"$hour":"$timestamp"}}},
+                      {"$group":{"_id":{"hour":"$hour"},"count":{"$sum":1}}}]'
+      )
+    } else if (input$timeFrame == "Daily") {
+      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
+                      {"$project": {"day": {"$dayOfMonth":"$timestamp"}}},
+                      {"$group":{"_id":{"day":"$day"},"count":{"$sum":1}}}]'
+      )
+    } else if (input$timeFrame == "Weekly") {
+      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
+                      {"$project": {"week": {"$week":"$timestamp"}}},
+                      {"$group":{"_id":{"week":"$week"},"count":{"$sum":1}}}]'
+      )
     } else if (input$timeFrame == "Monthly") {
-      query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
-    } else {
-      query <- paste0('{"sourceBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
+      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
+                      {"$project": {"month": {"$month":"$timestamp"}}},
+                      {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
+      )
     }
-  })
+    })
   
   getAlighting <- reactive({
-    shiny::validate(
-      need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
-    )
+    if (input$timeFrame != "Hourly") {
+      shiny::validate(
+        need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
+      )
+    }
     
     if (input$timeFrame == "Hourly") {
-      query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"},"$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}')
+      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1),'"}, "$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}},
+                      {"$project": {"hour": {"$hour":"$timestamp"}}},
+                      {"$group":{"_id":{"hour":"$hour"},"count":{"$sum":1}}}]'
+      )
+    } else if (input$timeFrame == "Daily") {
+      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
+                      {"$project": {"day": {"$dayOfMonth":"$timestamp"}}},
+                      {"$group":{"_id":{"day":"$day"},"count":{"$sum":1}}}]'
+      )
+    } else if (input$timeFrame == "Weekly") {
+      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
+                      {"$project": {"week": {"$week":"$timestamp"}}},
+                      {"$group":{"_id":{"week":"$week"},"count":{"$sum":1}}}]'
+      )
     } else if (input$timeFrame == "Monthly") {
-      query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
-    } else {
-      query <- paste0('{"destinationBusStop":"', isolate(input$busStop), '","timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"},"$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}')
+      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
+                      {"$project": {"month": {"$month":"$timestamp"}}},
+                      {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
+      )
     }
-  })
+    })
   
   getPlot <- eventReactive(input$genResult, {
     busStop <- isolate(input$busStop)
     timeFrame <- isolate(input$timeFrame)
+    start1 <- getStartDate(input$startDate1)
+    start2 <- getStartDate(input$startDate2)
+    end <- getEndDate(input$endDate)
     
-    boarding <- queryList$find(getBoarding())
-    alighting <- queryList$find(getAlighting())
-    
-    if (timeFrame == "Hourly") {
-      boarding <- table(cut(boarding$timestamp, breaks="hour"))
-      alighting <- table(cut(alighting$timestamp, breaks="hour"))
-    } else if (timeFrame == "Daily") {
-      boarding <- table(cut(boarding$timestamp, breaks="day"))
-      alighting <- table(cut(alighting$timestamp, breaks="day"))
-    } else if (timeFrame == "Weekly") {
-      boarding <- table(cut(boarding$timestamp, breaks="week"))
-      alighting <- table(cut(alighting$timestamp, breaks="week"))
-    } else if (timeFrame == "Monthly") {
-      boarding <- table(cut(boarding$timestamp, breaks="month"))
-      alighting <- table(cut(alighting$timestamp, breaks="month"))
-    }
+    boarding <- queryList$aggregate(isolate(getBoarding()))
+    alighting <- queryList$aggregate(isolate(getAlighting()))
     
     boarding <- data.frame(boarding)
-    boarding$Group <- paste0("Boarding from ", busStop)
+    boarding <- cbind(boarding, paste0("Boarding from ", busStop))
     colnames(boarding) <- c("timeFrame", "Count", "Group")
     alighting <- data.frame(alighting)
-    alighting$Group <- paste0("Alighting from ", busStop)
+    alighting <- cbind(alighting, paste0("alighting from ", busStop))
     colnames(alighting) <- c("timeFrame", "Count", "Group")
-    combined <- rbind(alighting, boarding)
-    combined$timeFrame <- as.Date(combined$timeFrame)
-    
-    boardingForecastTimeFrame <- data.frame(as.Date(tail(boarding$timeFrame,2))+2)
-    boardingForecastTimeFrame <- rbind(list(head(boarding$timeFrame, nrow(boarding)-2)), boardingForecastTimeFrame)
-    alightingForecastTimeFrame <- data.frame(as.Date(tail(alighting$timeFrame,2))+2)
-    alightingForecastTimeFrame <- rbind(list(head(alighting$timeFrame, nrow(alighting)-2)), alightingForecastTimeFrame)
-    
-    boardingSMA <- data.frame(boardingForecastTimeFrame, SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from", busStop))
-    colnames(boardingSMA) <- c("timeFrame", "Count", "Group")
-    boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
-    alightingSMA <- data.frame(alightingForecastTimeFrame, SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
-    colnames(alightingSMA) <- c("timeFrame", "Count", "Group")
-    alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
-    combinedSMA <- rbind(alightingSMA, boardingSMA)
-    combinedSMA$timeFrame <- as.Date(combinedSMA$timeFrame)
-    combined <- rbind(combined, combinedSMA)
-    combined$timeFrame <- as.character(combined$timeFrame)
     
     if (timeFrame == "Hourly") {
-      combined$timeFrame <- substring(combined$timeFrame, 12, 16)
-    } else if (timeFrame == "Daily" || timeFrame == "Weekly") {
-      combined$timeFrame <- substring(combined$timeFrame, 6, 10)
+      boarding$timeFrame <- lapply(boarding$timeFrame$hour, {function(x) x = as.character(x)})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(x,":00")})
+      alighting$timeFrame <- lapply(alighting$timeFrame$hour, {function(x) x = as.character(x)})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(x,":00")})
+    } else if (timeFrame == "Daily") {
+      boarding$timeFrame <- lapply(boarding$timeFrame$day, {function(x) x = as.character(x)})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 8), x)})
+      alighting$timeFrame <- lapply(alighting$timeFrame$day, {function(x) x = as.character(x)})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 8), x)})
+    } else if (timeFrame == "Weekly") {
+      startWeek <- min(boarding$timeFrame$week)
+      endWeek <- max(boarding$timeFrame$week)
+      boarding$timeFrame <- lapply(boarding$timeFrame$week, {function(x) x = as.character(ymd(paste0(substring(start1, 0, 4), "01-01")) + lubridate::weeks(x))})
+      alighting$timeFrame <- lapply(alighting$timeFrame$week, {function(x) x = as.character(ymd(paste0(substring(start1, 0, 4), "01-01")) + lubridate::weeks(x))})
     } else if (timeFrame == "Monthly") {
-      combined$timeFrame <- substring(combined$timeFrame, 0, 7)
+      boarding$timeFrame <- lapply(boarding$timeFrame$month, {function(x) x = as.character(x)})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
+      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})
+      alighting$timeFrame <- lapply(alighting$timeFrame$month, {function(x) x = as.character(x)})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
+      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})  
     }
     
-    plot <- ggplot(combined, aes(x=timeFrame, y=Count, group=Group, color=Group)) +geom_line(position=position_dodge(width=0.07))
-    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
-      theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(), 
-            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))+
-      scale_y_continuous(breaks=seq(0:10000))
+    boarding <- boarding[order(unlist(boarding$timeFrame)),]
+    alighting <- alighting[order(unlist(alighting$timeFrame)),]
+    combined <- rbind(alighting, boarding)
+    combined <- combined[with(combined, order(combined$Group, unlist(combined$timeFrame))),]
+    
+    if (timeFrame == "Daily") {
+      boardingSMAtimeFrame <- t(data.frame(tail(boarding$timeFrame, nrow(boarding)-2)))
+      alightingSMAtimeFrame <- t(data.frame(tail(alighting$timeFrame, nrow(alighting)-2)))
+      SMAtimeFrame <- list(rbind(alightingSMAtimeFrame, boardingSMAtimeFrame))
+      SMAtimeFrame <- lapply(SMAtimeFrame[1], {function(x) x = as.POSIXct(x)+days(1)})
+      
+      boardingSMA <- data.frame(SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from ", busStop))
+      colnames(boardingSMA) <- c("Count", "Group")
+      boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
+      alightingSMA <- data.frame(SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
+      colnames(alightingSMA) <- c("Count", "Group")
+      alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
+      
+      combinedSMA <- rbind(alightingSMA, boardingSMA)
+      combinedSMA <- cbind(SMAtimeFrame, combinedSMA)
+      colnames(combinedSMA) <- c("timeFrame", "Count", "Group")
+      combinedSMA$timeFrame <- sapply(combinedSMA$timeFrame, {function(x) x = as.character(x)})
+      combined <- rbind(combined, combinedSMA)
+    } else if (timeFrame == "Weekly") {
+      TS <- ts(c(boarding$Count), frequency = 52, start = c(as.numeric(substring(start1, 0, 4)), as.numeric(startWeek)))
+      # TS <- decompose(TS)
+      print(TS)
+    }
+    
+    # redo plot
+    
+    plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07))
+    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="num of riders", x="")+
+      theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
+            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))
   })
   
   output$plot <- renderPlot({
     getPlot()
+    
   })
   
   getNumBoarding <- eventReactive(input$genResult, {
-    isolate(nrow(queryList$find(getBoarding())))
+    boarding <- isolate(queryList$aggregate(getBoarding()))
+    count <- sum(boarding$count)
   })
   
   getNumAlighting <- eventReactive(input$genResult, {
-    isolate(nrow(queryList$find(getAlighting())))
+    alighting <- isolate(queryList$aggregate(getAlighting()))
+    count <- sum(alighting$count)
   })
   
   output$boarding <- renderText({
@@ -1189,15 +1291,4 @@ server <- function(input, output, session) {
   output$alighting <- renderText({
     print(getNumAlighting())
   })
-  
-  
-  # test outputs
-  output$testText <- renderText({
-    
-  })
-  
-  output$testTable <- DT::renderDataTable({
-    
-  })
-  
 }
