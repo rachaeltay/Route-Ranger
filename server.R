@@ -198,9 +198,9 @@ server <- function(input, output, session) {
     for (busStop in unlist(busStops)){
       #print(busStop)
       #dfAvgVol[busStop] <- dbAvgVol$find(paste0('{"startStop": "', busStop, '"}'))
-      dfAvgVol[[busStop]] <- avgVolTrend$find(query = toString(toJSON(list(startStop = busStop, 
+      dfAvgVol$busStop <- data.frame(avgVolTrend$find(query = toString(toJSON(list(startStop = busStop, 
                                                          busService = bus),
-                                                         auto_unbox = TRUE)))
+                                                         auto_unbox = TRUE))))
       # if() {
       #   dfAvgVol[busStop]
       # }
@@ -222,9 +222,9 @@ server <- function(input, output, session) {
     for (busStop in unlist(busStops)){
       # pull from mongodb average data update of each stop
       # replace dataframe with new containing added data
-      dfAvgVol[[busStop]] <- avgVolTrend$find(query = toString(toJSON(list(startStop = busStop, 
+      dfAvgVol$busStop <- data.frame(avgVolTrend$find(query = toString(toJSON(list(startStop = busStop, 
                                                                         busService = bus),
-                                                                   auto_unbox = TRUE)))
+                                                                   auto_unbox = TRUE))))
     }
     
     # retrieve possibly new starting stop
