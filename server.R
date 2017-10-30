@@ -62,13 +62,13 @@ databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongo
 # 
 # dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
-dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName )
+dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
 
-dbResponses <- mongo(collection = "responses",db = databaseName )
+dbResponses <- mongo(collection = "responses",db = databaseName ,url = databaseUrl)
 
-dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName)
+dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName ,url = databaseUrl)
 
-dbAvgVol <- mongo(collection = "avgVolTrend",db ="trrdb")
+dbAvgVol <- mongo(collection = "avgVolTrend",db ="trr", url = databaseUrl)
 
 #Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
@@ -263,11 +263,11 @@ server <- function(input, output, session) {
     
     
     startStop <- loadStart() 
-    startStop <- "PGP"
+    # startStop <- "PGP"
     
     
     print(typeof(dfAvgVol))
-    View(dfAvgVol)
+    # View(dfAvgVol)
     
     # time across a day
     
@@ -276,7 +276,7 @@ server <- function(input, output, session) {
     # Convert to Dataframe
     busCapTS <- data.frame(as.double(busCapTS))
     timeStampTS <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE)
-    View(timeStampTS)
+    # View(timeStampTS)
     colnames(timeStampTS) <- c("timestamp")
     timeStampTS[[1]] <- strptime(timeStampTS[[1]], "%Y-%m-%d %H:%M:%S")
     

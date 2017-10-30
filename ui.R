@@ -2,7 +2,7 @@ library(shiny)
 library(shinydashboard)
 library(shinyjs)
 library(DT)
-stops <- c("KR_terminal", "UHC", "Central_Library", "Kent_RIdge_MRT", "COM2", "Museum", "BIZ2", "Opp_HSSML", "LT13", "Ventus", "PGP_Hse_12", "Computer_Centre", "PGP_Hse_14_15", "PGP_Hse_7", "YIH", "Opp_YIH", "UHall", "Opp_UHall", "PGP", "Raffles_Hall", "EA", "PGPR", "LT29", "S17", "Opp_Kent_Ridge_MRT")
+stops <- list('PGP', 'Kent_Ridge_MRT', 'NUH', 'LT29', 'UHall', 'Opp_UHC', 'YIH', 'Central_Library', 'LT13', 'AS7', 'COM2', 'BIZ2', 'PGP_Hse_12', 'PGP_Hse_7')
 timeIntervals <- c("Monthly", "Weekly", "Daily", "Hourly")
 
 allStops <- c("PGP","Kent_Ridge_MRT","NUH","LT29","UHall","Opp_UHC","YIH","Central_Library","LT13","AS7","COM2",
