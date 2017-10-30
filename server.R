@@ -167,8 +167,8 @@ server <- function(input, output, session) {
     num <- nrow(query)
     
     data <- query[num,]["stopId"][1,]
-    print("data")
-    print(data)
+    # print("data")
+    # print(data)
     return(data)
   }
   
@@ -1167,7 +1167,7 @@ server <- function(input, output, session) {
     plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="# of riders", x="")+
       theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(), 
             panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))+
-      scale_y_continuous(breaks=seq(0:10000)) #how to do this w/o hard coding?
+      scale_y_continuous(breaks=seq(0:10000))
   })
   
   output$plot <- renderPlot({
