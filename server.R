@@ -1275,14 +1275,14 @@ output$forecastAcrossWeek <- renderPlot({
       # TS <- decompose(TS)
     }
     
-    # redo plot
-    
-    plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07))
-    plot
-      +labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="num of riders", x="")
-      +theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
+    plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07), size = 1.5)
+    plot+
+      labs(title="", y="", x="")+
+      theme(panel.background=element_rect(fill="white"), panel.grid.major=element_blank(),
             panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1),
-            legend.key.size = unit(1, "cm"))
+            legend.key.size = unit(0.5, "cm"), legend.position = 'top', legend.background = element_rect(colour = 'black'),
+            panel.border = element_rect(colour = "black", fill=NA, size=1))+
+      guides(colour = guide_legend(nrow = 2))
   })
   
   output$plot <- renderPlot({

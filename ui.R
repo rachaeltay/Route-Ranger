@@ -89,13 +89,13 @@ ui <- dashboardPage(skin = "yellow",
                                    conditionalPanel("input.timeFrame == 'Hourly'", dateInput("startDate1", "Choose a Day")),
                                    conditionalPanel("input.timeFrame != 'Hourly'", dateInput("startDate2", "Starting Date"), dateInput("endDate", "Ending Date")),
                                    actionButton("genResult" , "Show Stop Usage!"),
-                                   title = "Select Inputs",solidHeader = TRUE
+                                   status = "primary"
                                 ),
-                                fluidRow(
-                                  infoBox("Boarding Count", textOutput("boarding"), icon = icon("chevron-up", "fa-lg"), color = 'blue'),
-                                  infoBox("Alighting Count", textOutput("alighting"), icon = icon("chevron-down", "fa-lg"), color = 'blue')
+                                splitLayout(
+                                  box("Boarding:", textOutput("boarding"), status = "primary"),
+                                  box("Alighting:", textOutput("alighting"), status = "primary")
                                 ),
-                                box(plotOutput("plot")
+                                box(plotOutput("plot"), status = "primary"
                                 )
                         )
                         )
