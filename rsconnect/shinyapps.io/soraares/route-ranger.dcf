@@ -4,7 +4,7 @@ username:
 account: soraares
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 230646
-bundleId: 1052020
+appId: 230665
+bundleId: 1052751
 url: https://soraares.shinyapps.io/route-ranger/
-when: 1509380618.06542
+when: 1509416842.34533

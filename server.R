@@ -59,8 +59,8 @@ databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongo
 # dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
 # 
 # dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
-# 
-# dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
+
+dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
 dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
 
@@ -68,7 +68,7 @@ dbResponses <- mongo(collection = "responses",db = databaseName ,url = databaseU
 
 dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName ,url = databaseUrl)
 
-dbAvgVol <- mongo(collection = "avgVolTrend",db ="trr", url = databaseUrl)
+dbAvgVolTrend <- mongo(collection = "avgVolTrend",db ="trr", url = databaseUrl)
 
 #Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
@@ -190,7 +190,7 @@ server <- function(input, output, session) {
   }#loadStops
   
   # retrieve most recent query if not default to KR
-  # with dbAvgVol is my db
+  # with dbAvgVolTrend is my db
   startStop <- loadStart()
   busStops <- loadStops()
   #print("busStops")
@@ -205,10 +205,10 @@ server <- function(input, output, session) {
     dfAvgVol <- list()
     for (busStop in unlist(busStops)){
       #print(busStop)
-      #dfAvgVol[busStop] <- dbAvgVol$find(paste0('{"startStop": "', busStop, '"}'))
+      #dfAvgVol[busStop] <- dbAvgVolTrend$find(paste0('{"startStop": "', busStop, '"}'))
       print(busStop)
       #NEED TO CHECK WITH RACH AND ZJ WHAT DATA THEY WANT
-      dfAvgVol[[busStop]] <- dbAvgVol$find(query = toString(toJSON(list( stopId=busStop,busService = bus), auto_unbox = TRUE)))
+      dfAvgVol[[busStop]] <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=busStop,busService = bus), auto_unbox = TRUE)))
       
       # if() {
       #   dfAvgVol[busStop]
@@ -231,7 +231,7 @@ server <- function(input, output, session) {
     for (busStop in unlist(busStops)){
       # pull from mongodb average data update of each stop
       # replace dataframe with new containing added data
-      a <- dbAvgVol$find(query = toString(toJSON(list(startId = busStop, 
+      a <- dbAvgVolTrend$find(query = toString(toJSON(list(startId = busStop, 
                                                       busService = bus),
                                                  auto_unbox = TRUE)))
       
@@ -690,7 +690,7 @@ server <- function(input, output, session) {
   #   dbDyResponses$remove(query = "{}")
   #   dbResponses$remove(query = "{}")
   #   dbDyAvgVol$remove(query = "{}")
-  #   #dbAvgVol$remove(query = "{}")
+  #   #dbAvgVolTrend$remove(query = "{}")
   #   # Inserts buffer data
   #   buffer()
   # })# End of observeEvent
