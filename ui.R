@@ -38,7 +38,8 @@ ui <- dashboardPage(skin = "yellow",
                                   box(
                                     width = 12,
                                     plotOutput("forecastAcrossWeek"))
-                                )
+                                ),
+                                actionButton("show", "Login/Logout")
                         ),
                         
                         tabItem(tabName = "bus",
