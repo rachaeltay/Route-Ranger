@@ -2,9 +2,10 @@ library(shiny)
 library(shinydashboard)
 library(shinyjs)
 library(DT)
+
+
 stops <- c('PGP', 'Kent_Ridge_MRT', 'NUH', 'LT29', 'UHall', 'Opp_UHC', 'YIH', 'Central_Library', 'LT13', 'AS7', 'COM2', 'BIZ2', 'PGP_Hse_12', 'PGP_Hse_7')
 timeIntervals <- c("Monthly", "Weekly", "Daily", "Hourly")
-
 allStops <- c("PGP","Kent_Ridge_MRT","NUH","LT29","UHall","Opp_UHC","YIH","Central_Library","LT13","AS7","COM2",
               "BIZ2","PGP_Hse_14_15","PGP_Hse_12","PGP_Hse_7","Opp_HSSML","Opp_NUSS","Ventus","Computer_Centre",
               "Opp_YIH","Museum","UHC","Opp_UHall","S17","Opp_NUH","Opp_Kent_Ridge_MRT","PGPR","CP11","UTown")
@@ -82,17 +83,18 @@ ui <- dashboardPage(skin = "yellow",
                         
                         
                         tabItem(tabName = "busstop",
-                                box(selectInput("busStop", "Select Bus Stop", sort(stops), selected="COM2"),
-                                             selectInput("timeFrame", "Select Time Frame", timeIntervals, selected="Daily"),
-                                             conditionalPanel("input.timeFrame == 'Hourly'", dateInput("startDate1", "Choose a Day")),
-                                             conditionalPanel("input.timeFrame != 'Hourly'", dateInput("startDate2", "Starting Date"), dateInput("endDate", "Ending Date")),
-                                             actionButton("genResult" , "Show Stop Usage!")
+                                box(selectInput("busStop", "Bus Stop", sort(stops), selected="COM2"),
+                                   selectInput("timeFrame", "Time Frame", timeIntervals, selected="Daily"),
+                                   conditionalPanel("input.timeFrame == 'Hourly'", dateInput("startDate1", "Choose a Day")),
+                                   conditionalPanel("input.timeFrame != 'Hourly'", dateInput("startDate2", "Starting Date"), dateInput("endDate", "Ending Date")),
+                                   actionButton("genResult" , "Show Stop Usage!"),
+                                   title = "Select Inputs",solidHeader = TRUE
                                 ),
-                                box(div(tags$label("Number of people boarding"), textOutput("boarding"),
-                                              tags$label("Number of people aighting"), textOutput("alighting"), style="color:teal"), br(),
-                                          div(plotOutput("plot"), 
-                                              # test outputs
-                                              textOutput("testTyext"), dataTableOutput("teystTable"))
+                                fluidRow(
+                                  infoBox("Boarding Count", textOutput("boarding"), icon = icon("chevron-up", "fa-lg"), color = 'blue'),
+                                  infoBox("Alighting Count", textOutput("alighting"), icon = icon("chevron-down", "fa-lg"), color = 'blue')
+                                ),
+                                box(plotOutput("plot")
                                 )
                         )
                         )

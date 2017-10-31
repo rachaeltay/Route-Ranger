@@ -184,7 +184,6 @@ server <- function(input, output, session) {
   loadStops <- function(filter) { #all the bus stops
     allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
     answer <- list(allStopsAvail["list"][1,]) 
-    print("answer")
     return(answer)
     #print(answer)
   }#loadStops
@@ -206,7 +205,6 @@ server <- function(input, output, session) {
     for (busStop in unlist(busStops)){
       #print(busStop)
       #dfAvgVol[busStop] <- dbAvgVolTrend$find(paste0('{"startStop": "', busStop, '"}'))
-      print(busStop)
       #NEED TO CHECK WITH RACH AND ZJ WHAT DATA THEY WANT
       dfAvgVol[[busStop]] <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=busStop,busService = bus), auto_unbox = TRUE)))
       
@@ -221,7 +219,6 @@ server <- function(input, output, session) {
   }
   
   # Initialize my_data
-  print('Initialised')
   dfAvgVol <- initialiseData("A1")
   #print(dfAvgVol)
   #print(dfAvgVol[["COM2"]])
@@ -255,9 +252,7 @@ server <- function(input, output, session) {
   
   output$forecastCurrent <- renderPlot({
     
-    print("Render Plot")
     invalidateLater(1800000, session) # invalidate every 30 minutes
-    print("Update")
     updateData("A1")
     
     
@@ -266,7 +261,6 @@ server <- function(input, output, session) {
     # startStop <- "PGP"
     
     
-    print(typeof(dfAvgVol))
     # View(dfAvgVol)
     
     # time across a day
@@ -1198,10 +1192,10 @@ server <- function(input, output, session) {
     alighting <- queryList$aggregate(isolate(getAlighting()))
     
     boarding <- data.frame(boarding)
-    boarding <- cbind(boarding, paste0("Boarding from ", busStop))
+    boarding <- cbind(boarding, "Boarding")
     colnames(boarding) <- c("timeFrame", "Count", "Group")
     alighting <- data.frame(alighting)
-    alighting <- cbind(alighting, paste0("alighting from ", busStop))
+    alighting <- cbind(alighting, "Alighting")
     colnames(alighting) <- c("timeFrame", "Count", "Group")
     
     if (timeFrame == "Hourly") {
@@ -1243,10 +1237,10 @@ server <- function(input, output, session) {
       SMAtimeFrame <- list(rbind(alightingSMAtimeFrame, boardingSMAtimeFrame))
       SMAtimeFrame <- lapply(SMAtimeFrame[1], {function(x) x = as.POSIXct(x)+days(1)})
       
-      boardingSMA <- data.frame(SMA(ts(boarding$Count), 3), paste0("Forecasted boarding from ", busStop))
+      boardingSMA <- data.frame(SMA(ts(boarding$Count), 3), "Forecasted boarding")
       colnames(boardingSMA) <- c("Count", "Group")
       boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
-      alightingSMA <- data.frame(SMA(ts(alighting$Count), 3), paste0("Forecasted alighting from ", busStop))
+      alightingSMA <- data.frame(SMA(ts(alighting$Count), 3), "Forecasted alighting")
       colnames(alightingSMA) <- c("Count", "Group")
       alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
       
@@ -1258,15 +1252,16 @@ server <- function(input, output, session) {
     } else if (timeFrame == "Weekly") {
       TS <- ts(c(boarding$Count), frequency = 52, start = c(as.numeric(substring(start1, 0, 4)), as.numeric(startWeek)))
       # TS <- decompose(TS)
-      print(TS)
     }
     
     # redo plot
     
     plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07))
-    plot+labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="num of riders", x="")+
-      theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1))
+    plot
+      +labs(title=paste0('Number of riders boarding and alighting at ', busStop), y="num of riders", x="")
+      +theme(panel.background=element_rect(fill="black"), panel.grid.major=element_blank(),
+            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1),
+            legend.key.size = unit(1, "cm"))
   })
   
   output$plot <- renderPlot({
