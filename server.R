@@ -198,6 +198,26 @@ server <- function(input, output, session) {
     #print(answer)
   }#loadStops
   
+  loadService <- function(stopname) {
+    enroute <- routeidx$find(query = toString(toJSON(list(stopId=stopname),auto_unbox = TRUE)))
+    avail <- list()
+    print(enroute)
+    ctr <- 1
+    if (enroute["A1"][1,] > 0 ) { 
+      avail[[ctr]] <- "A1"
+      ctr <- ctr +1 }
+    if (enroute["A2"][1,] > 0 ) { 
+      avail[[ctr]] <- "A2"
+      ctr <- ctr +1 }
+    if (enroute["D1"][1,] > 0 ) { 
+      avail[[ctr]] <- "D1"
+      ctr <- ctr +1}
+    if (enroute["D2"][1,] > 0 ) { 
+      avail[[ctr]] <- "D2"}
+    
+    return(avail)
+  }#end of loadService
+  
   # retrieve most recent query if not default to KR
   # with dbAvgVolTrend is my db
   startStop <- loadStart()
@@ -208,39 +228,60 @@ server <- function(input, output, session) {
   # print(startStop)
   # print(busStops)
   
-  initialiseData <- function(bus){
+  initialiseData <- function(bus,stop){
     
     # for every bus stop I create a dataframe and populate data
     dfAvgVol <- list()
-    for (busStop in unlist(busStops)){
-      #print(busStop)
-      #dfAvgVol[busStop] <- dbAvgVolTrend$find(paste0('{"startStop": "', busStop, '"}'))
-      #NEED TO CHECK WITH RACH AND ZJ WHAT DATA THEY WANT
-      dfAvgVol[[busStop]] <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=busStop,busService = bus), auto_unbox = TRUE)))
+    # for (busStop in unlist(busStops)){
+    #   #print(busStop)
+    #   #dfAvgVol[busStop] <- dbAvgVolTrend$find(paste0('{"startStop": "', busStop, '"}'))
+    #   print(busStop)
+    #   #NEED TO CHECK WITH RACH AND ZJ WHAT DATA THEY WANT
+    #   dfAvgVol[[busStop]] <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=busStop,busService = bus), auto_unbox = TRUE)))
+    #   
+    # 
+    # }
+    
+    flag <-  TRUE
+    temp <- list()
+    for (b in unlist(bus)) {
+      df <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=stop,busService = b), auto_unbox = TRUE)))
+      print(df)
+      if (flag == TRUE){
+        dfAvgVol[[stop]]<-df
+        flag <- FALSE
+      }
+      else {
+        dfAvgVol[[stop]] <- rbind(dfAvgVol[[stop]],df)
+        print(b)
+        print("testing dfAvgVol rbind")
+        print(dfAvgVol)
+      }#end of else
       
-      # if() {
-      #   dfAvgVol[busStop]
-      # }
-      #print(dfAvgVol)
     }
-    # print("dfAvgVol")
-    # print(dfAvgVol)
+    
+    
+    
+    
     return(dfAvgVol)
+    
   }
   
   # Initialize my_data
-  dfAvgVol <- initialiseData("A1")
+  print('Initialised')
+  dfAvgVol <- initialiseData(loadService(startStop),startStop)
   #print(dfAvgVol)
   #print(dfAvgVol[["COM2"]])
   #Update every hour update all bus stop dataframes
+  
   updateData <- function(bus){
     
     for (busStop in unlist(busStops)){
       # pull from mongodb average data update of each stop
       # replace dataframe with new containing added data
       a <- dbAvgVolTrend$find(query = toString(toJSON(list(startId = busStop, 
-                                                      busService = bus),
-                                                 auto_unbox = TRUE)))
+                                                           busService = bus),
+                                                      auto_unbox = TRUE)))
       
       #print("A")
       #print(a)
@@ -258,20 +299,37 @@ server <- function(input, output, session) {
     return(TRUE)
   }
   
-  # Plot the current hours data along with forecast
+
   
+  #Getting Time now to react to queries incoming
+  getMins <- function(data) {
+    hour <- as.numeric(substr(data,12,13))
+    min <- as.numeric(substr(data,15,16))
+    timequery <- (hour*60)+(min)
+    return(timequery)
+  }#end of getMins
+  
+  instant <- Sys.time()
+  insta <- getMins(instant)
+  #BEN------------------------------------------
+  
+  # Plot the current hours data along with forecast
   output$forecastCurrent <- renderPlot({
     
+    print("Render Plot")
     invalidateLater(1800000, session) # invalidate every 30 minutes
-    updateData("A1")
+    #print("Update")
+    #updateData("A1")
     
     
     
-    startStop <- loadStart() 
+    #startStop <- loadStart() 
     # startStop <- "PGP"
+    # print('Initialised')
+    # dfAvgVol <- initialiseData(loadService(stop),stop)
     
+    print(typeof(dfAvgVol))
     
-    # View(dfAvgVol)
     
     # time across a day
     
@@ -284,8 +342,12 @@ server <- function(input, output, session) {
     colnames(timeStampTS) <- c("timestamp")
     timeStampTS[[1]] <- strptime(timeStampTS[[1]], "%Y-%m-%d %H:%M:%S")
     
-    avgVolTS <- cbind(busCapTS, timeStampTS, col="current")
-    colnames(avgVolTS) <- c("avgVol", "timestamps", 'type')
+    busavail <- data.frame(dfAvgVol[[startStop]]$busService)
+    
+    
+    
+    avgVolTS <- cbind(busCapTS, timeStampTS,busavail, col="current")
+    colnames(avgVolTS) <- c("avgVol", "timestamps", "bus","type")
     
     busCapForecast <- ma(ts(busCapTS),order=3)
     #print(busCapForecast)
@@ -297,9 +359,9 @@ server <- function(input, output, session) {
     timeStampForecast[[1]] <- strptime(timeStampForecast[[1]], "%Y-%m-%d %H:%M:%S")
     
     
-    avgVolForecast <- cbind(busCapForecast, timeStampForecast, col='forecast')
+    avgVolForecast <- cbind(busCapForecast, timeStampForecast,busavail, col='forecast')
     #print(avgVolForecast)
-    colnames(avgVolForecast) <- c("avgVol", "timestamps", 'type')
+    colnames(avgVolForecast) <- c("avgVol", "timestamps", "bus","type")
     avgVolForecast <- avgVolForecast[3:nrow(avgVolForecast)-1,]
     
     busCapCombi <- rbind(avgVolTS, avgVolForecast)
@@ -307,50 +369,51 @@ server <- function(input, output, session) {
     busCapCombi[[2]] <- strptime(busCapCombi[[2]], "%Y-%m-%d %H:%M:%S")
     #print(busCapCombi)
     
-    ggplot(busCapCombi, aes(x=timestamps, colour="forecast",group=type))+ #, ymin = 1, ymax = 40
-      geom_line(aes(y=avgVol), color="red") +
+    ggplot(busCapCombi, aes(x=timestamps,color=bus))+ #, ymin = 1, ymax = 40
+      geom_line(aes(y=avgVol)) + geom_point(aes(y=avgVol))+
       theme_economist() + scale_color_economist() +
-      scale_color_manual(values=wes_palette(n=5, name="Zissou")) +
+      #scale_color_manual(values=wes.palette(n=5, name="Zissou")) +
       scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%I%p"))+ #Scales the axis
       labs(x="Time", y="Number of people on the bus")+
       theme(panel.background=element_rect(fill="lightblue"))
   })
   
   
-output$forecastAcrossWeek <- renderPlot({
-    # holt winter across a week
-    
-    #plot using Holt Winter for prediction
-    # create timeseries of a week
-    avgVolTS <- ts(dfAvgVol$PGP$avgVol, start=1, end=5)
-    # triple exponential - models level, trend, and seasonal components
-    hw <- HoltWinters(avgVolTS)
-    # create forecast using predict
-    forecast<-predict(hw,  n.ahead=10,  prediction.interval=T,  level=0.95)
-    
-    # seperate hw and forecast into respective dataframes
-    forecastData<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
-    fittedData<-data.frame(time=round(time(hw$fitted),  3),  value_fitted=as.data.frame(hw$fitted)$xhat)
-    actualData<-data.frame(time=round(time(hw$x),  3),  Actual=c(hw$x))
-    
-    # create graph
-    datasets<-merge(actualData,  fittedData,  by='time',  all=TRUE)
-    datasets<-merge(datasets,  forecastData,  all=TRUE,  by='time')
-    datasets[is.na(datasets$dev),  ]$dev<-0
-    
-    datasets$Fitted<-c(rep(NA,  NROW(datasets)-(NROW(forecastData) + NROW(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
-    
-    # using the reshape function to combine all the datasets, melt data so that each row is a unique id-variable combination
-    datasetsCombi <- melt(datasets[, c('time', 'Actual', 'Fitted')], id='time')
-    
-    ggplot(datasetsCombi,  aes(x=time,  y=value)) + 
-      geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='green') +
-      geom_line(aes(colour=variable), size=0.8) +
-      scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
-      # geom_vline(x=max(actualData$time),  lty=2) + 
-      xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc() + scale_colour_hc()
-    
-  })
+  
+# output$forecastAcrossWeek <- renderPlot({
+#     # holt winter across a week
+#     
+#     #plot using Holt Winter for prediction
+#     # create timeseries of a week
+#     avgVolTS <- ts(dfAvgVol[["PGP"]]$avgVol, start=1, end=5)
+#     # triple exponential - models level, trend, and seasonal components
+#     hw <- HoltWinters(avgVolTS)
+#     # create forecast using predict
+#     forecast<-predict(hw,  n.ahead=10,  prediction.interval=T,  level=0.95)
+#     
+#     # seperate hw and forecast into respective dataframes
+#     forecastData<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
+#     fittedData<-data.frame(time=round(time(hw$fitted),  3),  value_fitted=as.data.frame(hw$fitted)$xhat)
+#     actualData<-data.frame(time=round(time(hw$x),  3),  Actual=c(hw$x))
+#     
+#     # create graph
+#     datasets<-merge(actualData,  fittedData,  by='time',  all=TRUE)
+#     datasets<-merge(datasets,  forecastData,  all=TRUE,  by='time')
+#     datasets[is.na(datasets$dev),  ]$dev<-0
+#     
+#     datasets$Fitted<-c(rep(NA,  NROW(datasets)-(NROW(forecastData) + NROW(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
+#     
+#     # using the reshape function to combine all the datasets, melt data so that each row is a unique id-variable combination
+#     datasetsCombi <- melt(datasets[, c('time', 'Actual', 'Fitted')], id='time')
+#     
+#     ggplot(datasetsCombi,  aes(x=time,  y=value)) + 
+#       geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='green') +
+#       geom_line(aes(colour=variable), size=0.8) +
+#       scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
+#       # geom_vline(x=max(actualData$time),  lty=2) + 
+#       xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc() + scale_colour_hc()
+#     
+#   })
   
   
   
@@ -422,6 +485,19 @@ output$forecastAcrossWeek <- renderPlot({
   #STARTBEN ------------------------------------------------------->
   
   observeEvent(input$submitQ,{
+    
+
+    if(insta > 1380 || insta <435) {
+      output$var <- renderText({ 
+        input$submitQ
+        #realeta = selectdata()
+        paste("Bus are not in Service")
+      })
+      #endOutput
+      
+    }#end of IF
+    
+    else{
     
     getCurrentTime = reactive({
       #timeNow Manipulation ------------------------------------------------ben
@@ -553,9 +629,12 @@ output$forecastAcrossWeek <- renderPlot({
       paste("Your ETA is", realeta, "minutes")
     })
     #endOutput
-    
+    }
   })#end of q
   
+  
+  if(insta > 1380 || insta <435){}
+  else{
   
   observeEvent(input$submitV, {
     
@@ -647,7 +726,7 @@ output$forecastAcrossWeek <- renderPlot({
     
     
   } ) #end of observerEvent submitV
-  
+  }
   
   #ENDBEN --------------------------------------------------------->
   
