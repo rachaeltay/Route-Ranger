@@ -15,7 +15,7 @@ library(jsonlite)
 library(ggplot2)
 library(DT)
 # put in AM and PM w date
-
+library(lubridate)
 library(smooth)
 # %>% pipeline from magrittr
 library(magrittr)
@@ -123,6 +123,16 @@ server <- function(input, output, session) {
   })
   
   ####################   Google Login   ####################
+  
+  # for the button to pop up modal
+  observeEvent(input$show, {
+    showModal(modalDialog(
+      title = "Welcome to Route Ranger",
+      googleAuthUI("gauth_login"),
+      # footer = NULL,
+      easyClose = FALSE
+    ))
+  })
   
   ## Global variables needed throughout the app
   rv <- reactiveValues(
@@ -266,7 +276,7 @@ server <- function(input, output, session) {
     
     
     startStop <- loadStart() 
-    startStop <- "PGP"
+    # startStop <- "PGP"
     
     
     print(typeof(dfAvgVol))
@@ -316,31 +326,42 @@ server <- function(input, output, session) {
   })
   
   
-  output$forecastAcrossWeek <- renderPlot({
+output$forecastAcrossWeek <- renderPlot({
     # holt winter across a week
     
-    # store date for moving average
-    # ma.forecast <- ma(busCapTS, order=3)
-    # ma.TTR <- SMA(busCapTS, 3)
-    # plot(ma.forecast)
-    # ggplot(ma.forecast, aes(time,ma.forecast))
-    # ggplot(ma.TTR)
+    #plot using Holt Winter for prediction
+    # create timeseries of a week
+    avgVolTS <- ts(dfAvgVol$PGP$avgVol, start=1, end=5)
+    # triple exponential - models level, trend, and seasonal components
+    hw <- HoltWinters(avgVolTS)
+    # create forecast using predict
+    forecast<-predict(hw,  n.ahead=10,  prediction.interval=T,  level=0.95)
     
-    # # literally multiple freq to create a week  (Time 1 to 7, Monday to Sunday)
-    # avgVolTS <- ts(dfAvgVol$startStop$avgVol, start=1, end=7, frequency = 14)
-    # # plot(avgVolTS)
-    # decomp <- decompose(avgVolTS)
-    # plot(decomp)
-    # # triple exponential - models level, trend, and seasonal components
-    # fit <- HoltWinters(decomp$seasonal)
-    # # plot(fit)
-    # # predictive accuracy
-    # print(accuracy(forecast(fit)))
+    # seperate hw and forecast into respective dataframes
+    forecastData<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
+    fittedData<-data.frame(time=round(time(hw$fitted),  3),  value_fitted=as.data.frame(hw$fitted)$xhat)
+    actualData<-data.frame(time=round(time(hw$x),  3),  Actual=c(hw$x))
     
-    #plot the seasonality in decomposition using Holt Winter for prediction
-    # ggsdc(busCapCombi, aes(x = timestamps, y = avgVol, colour = forecast), method = "stl") + geom_line()
+    # create graph
+    datasets<-merge(actualData,  fittedData,  by='time',  all=TRUE)
+    datasets<-merge(datasets,  forecastData,  all=TRUE,  by='time')
+    datasets[is.na(datasets$dev),  ]$dev<-0
+    
+    datasets$Fitted<-c(rep(NA,  NROW(datasets)-(NROW(forecastData) + NROW(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
+    
+    # using the reshape function to combine all the datasets, melt data so that each row is a unique id-variable combination
+    datasetsCombi <- melt(datasets[, c('time', 'Actual', 'Fitted')], id='time')
+    
+    ggplot(datasetsCombi,  aes(x=time,  y=value)) + 
+      geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='green') +
+      geom_line(aes(colour=variable), size=0.8) +
+      scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
+      # geom_vline(x=max(actualData$time),  lty=2) + 
+      xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc() + scale_colour_hc()
     
   })
+  
+  
   
   ####################   Changing Select Inputs by Bus Service  ####################
   observe({
