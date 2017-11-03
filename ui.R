@@ -45,6 +45,11 @@ ui <- dashboardPage(skin = "yellow",
                         
                         tabItem(tabName = "bus",
                                 fluidRow(
+                                  valueBoxOutput(width = 3,"todayDate"),
+                                  valueBoxOutput(width = 3,"ETA"),
+                                  valueBoxOutput(width = 6,"error")
+                                ),
+                                fluidRow(
                                   box(selectInput(inputId = "busService", label = "Choose Your Bus", c("A1","A2","D1","D2")),
                                       selectInput(inputId = "startStop", label = "Choose Your Starting Bus Stop", choices = allStops),
                                       selectInput(inputId = "endStop", label = "Choose Your Destination Bus Stop", choices = allStops),
@@ -60,8 +65,7 @@ ui <- dashboardPage(skin = "yellow",
                                       #actionButton("clear", "Clear")
                                       #h2(textOutput("stats"), style = "color: Blue;")
                                   ),
-                                  box(textOutput("var"), 
-                                      textOutput("timestamp"),
+                                  box(
                                       plotOutput("ma")
                                   )
                                 ),
