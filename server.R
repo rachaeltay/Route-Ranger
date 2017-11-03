@@ -28,6 +28,7 @@ library(viridis)
 library(forecast)
 library(TTR)
 
+library(reshape2)
 library(hydroGOF)
 #### ASSUMPTIONS ####
 # 1. App users only submit busCapacity when they are onboard the bus
@@ -70,7 +71,7 @@ dbResponses <- mongo(collection = "responses",db = databaseName ,url = databaseU
 
 dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName ,url = databaseUrl)
 
-dbAvgVolTrend <- mongo(collection = "avgVolTrend",db ="trr", url = databaseUrl)
+dbAvgVolTrend <- mongo(collection = "avgVolTrend",db =databaseName, url = databaseUrl)
 
 #Google Authentication
 options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
@@ -235,34 +236,21 @@ server <- function(input, output, session) {
   startStop <- loadStart()
   busReq <- loadBus()
   busStops <- loadStops()
-  #print("busStops")
-  #print(busStops)
-  # View(busStops)
-  # print(startStop)
-  # print(busStops)
+
   
   initialiseData <- function(bus,stop){
     
     # for every bus stop I create a dataframe and populate data
     dfAvgVol <- list()
-    # for (busStop in unlist(busStops)){
-    #   #print(busStop)
-    #   #dfAvgVol[busStop] <- dbAvgVolTrend$find(paste0('{"startStop": "', busStop, '"}'))
-    #   print(busStop)
-    #   #NEED TO CHECK WITH RACH AND ZJ WHAT DATA THEY WANT
-    #   dfAvgVol[[busStop]] <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=busStop,busService = bus), auto_unbox = TRUE)))
-    #   
-    # 
-    # }
-    
+
+    # extracting the avgVol data
     flag <-  TRUE
     temp <- list()
     df <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=stop,busService = bus), auto_unbox = TRUE)))
     print(df)
- 
     dfAvgVol[[stop]]<-df
     flag <- FALSE
-      
+    # extracting the avgVol data END 
     
     return(dfAvgVol)
     
@@ -271,8 +259,7 @@ server <- function(input, output, session) {
   # Initialize my_data
   print('Initialised')
   dfAvgVol <- initialiseData(busReq,startStop)
-  #print(dfAvgVol)
-  #print(dfAvgVol[["COM2"]])
+
   #Update every hour update all bus stop dataframes
   
   updateData <- function(bus){
@@ -314,6 +301,10 @@ server <- function(input, output, session) {
   insta <- getMins(instant)
   #BEN------------------------------------------
   
+  
+  
+  
+  
   # Plot the current hours data along with forecast
   output$forecastCurrent <- renderPlot({
     
@@ -322,12 +313,6 @@ server <- function(input, output, session) {
     #print("Update")
     #updateData("A1")
     
-    
-    
-    #startStop <- loadStart() 
-    # startStop <- "PGP"
-    # print('Initialised')
-    # dfAvgVol <- initialiseData(loadService(stop),stop)
     
     print(typeof(dfAvgVol))
     
@@ -381,40 +366,41 @@ server <- function(input, output, session) {
   
   
   
-# output$forecastAcrossWeek <- renderPlot({
-#     # holt winter across a week
-#     
-#     #plot using Holt Winter for prediction
-#     # create timeseries of a week
-#     avgVolTS <- ts(dfAvgVol[["PGP"]]$avgVol, start=1, end=5)
-#     # triple exponential - models level, trend, and seasonal components
-#     hw <- HoltWinters(avgVolTS)
-#     # create forecast using predict
-#     forecast<-predict(hw,  n.ahead=10,  prediction.interval=T,  level=0.95)
-#     
-#     # seperate hw and forecast into respective dataframes
-#     forecastData<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
-#     fittedData<-data.frame(time=round(time(hw$fitted),  3),  value_fitted=as.data.frame(hw$fitted)$xhat)
-#     actualData<-data.frame(time=round(time(hw$x),  3),  Actual=c(hw$x))
-#     
-#     # create graph
-#     datasets<-merge(actualData,  fittedData,  by='time',  all=TRUE)
-#     datasets<-merge(datasets,  forecastData,  all=TRUE,  by='time')
-#     datasets[is.na(datasets$dev),  ]$dev<-0
-#     
-#     datasets$Fitted<-c(rep(NA,  NROW(datasets)-(NROW(forecastData) + NROW(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
-#     
-#     # using the reshape function to combine all the datasets, melt data so that each row is a unique id-variable combination
-#     datasetsCombi <- melt(datasets[, c('time', 'Actual', 'Fitted')], id='time')
-#     
-#     ggplot(datasetsCombi,  aes(x=time,  y=value)) + 
-#       geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='green') +
-#       geom_line(aes(colour=variable), size=0.8) +
-#       scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
-#       # geom_vline(x=max(actualData$time),  lty=2) + 
-#       xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc() + scale_colour_hc()
-#     
-#   })
+output$forecastAcrossWeek <- renderPlot({
+    # holt winter across a week
+
+    #plot using Holt Winter for prediction
+    # create timeseries of a week
+    print(dfAvgVol[[startStop]]$avgVol)
+    avgVolTS <- ts(dfAvgVol[[startStop]]$avgVol,start=1, end=5,frequency = 4)
+    # triple exponential - models level, trend, and seasonal components
+    hw <- HoltWinters(avgVolTS)
+    # create forecast using predict
+    forecast<-predict(hw,  n.ahead=10,  prediction.interval=T,  level=0.95)
+
+    # seperate hw and forecast into respective dataframes
+    forecastData<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
+    fittedData<-data.frame(time=round(time(hw$fitted),  3),  value_fitted=as.data.frame(hw$fitted)$xhat)
+    actualData<-data.frame(time=round(time(hw$x),  3),  Actual=c(hw$x))
+
+    # create graph
+    datasets<-merge(actualData,  fittedData,  by='time',  all=TRUE)
+    datasets<-merge(datasets,  forecastData,  all=TRUE,  by='time')
+    datasets[is.na(datasets$dev),  ]$dev<-0
+
+    datasets$Fitted<-c(rep(NA,  NROW(datasets)-(NROW(forecastData) + NROW(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
+
+    # using the reshape function to combine all the datasets, melt data so that each row is a unique id-variable combination
+    datasetsCombi <- melt(datasets[, c('time', 'Actual', 'Fitted')], id='time')
+
+    ggplot(datasetsCombi,  aes(x=time,  y=value)) +
+      geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='green') +
+      geom_line(aes(colour=variable), size=0.8) +
+      scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
+      # geom_vline(x=max(actualData$time),  lty=2) +
+      xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc() + scale_colour_hc()
+
+  })
   
   
   
@@ -743,6 +729,7 @@ server <- function(input, output, session) {
         qtime <- getMins(queryData[i,]["timestamp"][1,])
         queryData[i,]["timeArr"][1,] <- arrTime
         if (as.character(substr((queryData[i,]["timestamp"][1,]),1,10)) == getDateQ()){
+          if(as.numeric(substr((queryData[i,]["timestamp"][1,]),12,13)) == getTimeQ()){
           if (queryData[i,]["realIdx"][1,]==whatBusIdx(queryData[i,]["timestamp"][1,])){
             reta <- arrTime - qtime
             queryData[i,]["rETA"][1,] <- reta
@@ -761,6 +748,7 @@ server <- function(input, output, session) {
             queryList$update(updateQ, setArr, multiple = FALSE)
             queryList$update(updateQ, setETA, multiple = FALSE)
             
+            }
           }
         }
         #start updating mongo
@@ -1238,8 +1226,8 @@ server <- function(input, output, session) {
     #timeOOnly Manipulation ------------------------------------------------ben
     datetime <- Sys.time()
     datetime <- as.character(datetime)
-    tnow<- as.character(substr(datetime,12,16))
-    return(tnow)
+    tnow<- as.character(substr(datetime,12,13))
+    return(as.numeric(tnow))
     #end of getting timeonly-----------------------------------------------ben
   })
   
@@ -1272,7 +1260,7 @@ server <- function(input, output, session) {
   loadtime <- function(filter) {
     timeData <- stime$find(query = toString(toJSON(list(bus=input$busService),auto_unbox = TRUE)))
   }#end of loadtime
-  
+
   loadindex <- function(filter) {
     stopIdx <- routeidx$find(query = toString(toJSON(list(stopId=isolate(input$startStop)),auto_unbox = TRUE)))   
   }#end of loadindex
