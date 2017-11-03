@@ -357,8 +357,8 @@ server <- function(input, output, session) {
     
     ggplot(busCapCombi, aes(x=timestamps,color=bus,group=type))+ #, ymin = 1, ymax = 40
       geom_line(aes(y=avgVol)) + geom_point(aes(y=avgVol))+
-      theme_economist() + scale_color_economist() +
-      #scale_color_manual(values=wes.palette(n=5, name="Zissou")) +
+      theme_economist() +
+      scale_color_economist(labels = c("Current", "Forecast")) +
       scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%I%p"))+ #Scales the axis
       labs(x="Time", y="Number of people on the bus")+
       theme(panel.background=element_rect(fill="lightblue"))
@@ -396,9 +396,10 @@ output$forecastAcrossWeek <- renderPlot({
     ggplot(datasetsCombi,  aes(x=time,  y=value)) +
       geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='green') +
       geom_line(aes(colour=variable), size=0.8) +
+      scale_color_manual(labels = c("Current", "Forecast"), values = c("#0072B2", "#D55E00")) +
       scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
       # geom_vline(x=max(actualData$time),  lty=2) +
-      xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc() + scale_colour_hc()
+      xlab('Day of the Week') + ylab('Estimated number of people on the bus') + theme_hc()
 
   })
   
