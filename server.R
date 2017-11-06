@@ -312,23 +312,35 @@ server <- function(input, output, session) {
     invalidateLater(1800000, session) # invalidate every 30 minutes
     #print("Update")
     #updateData("A1")
-    
-    
     print(typeof(dfAvgVol))
+    
+    #ensure only one day data
+    pdf <- dfAvgVol[[startStop]] #dataframe #remember this
+    numR <- nrow(pdf)
+    ts <-  pdf$timestamp
+    print(ts)
+    
+    today <- toString(as.Date("2017-10-23 07:00:00 MYT")) #change to Sys.date() once rigged.
+    
+    data <- pdf[grep(today, ts),]
+    #print(data)
+    #View(data)
+    #ensure 1day 
+    
     
     
     # time across a day
     
     # Time Series Object
-    busCapTS <- dfAvgVol[[startStop]]$avgVol
+    busCapTS <- data$avgVol
     # Convert to Dataframe
     busCapTS <- data.frame(as.double(busCapTS))
-    timeStampTS <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE)
+    timeStampTS <- data.frame(data$timestamp,stringsAsFactors = FALSE)
     # View(timeStampTS)
     colnames(timeStampTS) <- c("timestamp")
     timeStampTS[[1]] <- strptime(timeStampTS[[1]], "%Y-%m-%d %H:%M:%S")
     
-    busavail <- data.frame(dfAvgVol[[startStop]]$busService)
+    busavail <- data.frame(data$busService)
     
     
     
@@ -339,7 +351,7 @@ server <- function(input, output, session) {
     #print(busCapForecast)
     busCapForecast <- data.frame(busCapForecast)
     # add 2 hours since k=3
-    timeStampForecast <- data.frame(dfAvgVol[[startStop]]$timestamp,stringsAsFactors = FALSE) #+ 2*60*60 #you cant add it as it is a list of timestamp not just one
+    timeStampForecast <- data.frame(data$timestamp,stringsAsFactors = FALSE) #+ 2*60*60 #you cant add it as it is a list of timestamp not just one
     colnames(timeStampForecast) <- c("timestamp")
     #convert column to POSIXct so that ggplot can  scale
     timeStampForecast[[1]] <- strptime(timeStampForecast[[1]], "%Y-%m-%d %H:%M:%S")
