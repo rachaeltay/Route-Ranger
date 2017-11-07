@@ -154,7 +154,7 @@ server <- function(input, output, session) {
   
   ## Authentication
   accessToken <- callModule(googleAuth, "gauth_login",
-                            login_class = "btn btn-primary",
+                            login_class = "btn btn-link",
                             logout_class = "btn btn-warning")
   
   userDetails <- reactive({
@@ -287,23 +287,6 @@ server <- function(input, output, session) {
     return(TRUE)
   }
   
-
-  
-  #Getting Time now to react to queries incoming
-  getMins <- function(data) {
-    hour <- as.numeric(substr(data,12,13))
-    min <- as.numeric(substr(data,15,16))
-    timequery <- (hour*60)+(min)
-    return(timequery)
-  }#end of getMins
-  
-  instant <- Sys.time()
-  insta <- getMins(instant)
-  #BEN------------------------------------------
-  
-  
-  
-  
   
   # Plot the current hours data along with forecast
   output$forecastCurrent <- renderPlot({
@@ -368,11 +351,11 @@ server <- function(input, output, session) {
     #print(busCapCombi)
     
     ggplot(busCapCombi, aes(x=timestamps,color=bus,group=type))+ #, ymin = 1, ymax = 40
-      geom_line(aes(y=avgVol),size=0.8) +
+      geom_line(aes(y=avgVol),size=1) +
       theme_economist() +
-      scale_color_economist(labels = c("Current", "Forecast")) +
-      scale_x_datetime(breaks = date_breaks("1 hour"), labels=date_format("%I%p"))+ #Scales the axis
-      labs(x="Time", y="Number of people on the bus")
+      scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
+      scale_x_datetime(breaks = date_breaks("2 hours"), labels=date_format("%I%p"))+ #Scales the axis
+      labs(x = "Time", y="Estimated number of people on the bus")
   })
   
   
@@ -399,22 +382,33 @@ output$forecastAcrossWeek <- renderPlot({
     datasets<-merge(datasets,  forecastData,  all=TRUE,  by='time')
     datasets[is.na(datasets$dev),  ]$dev<-0
 
-    datasets$Fitted<-c(rep(NA,  NROW(datasets)-(NROW(forecastData) + NROW(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
+    datasets$Fitted<-c(rep(NA,  nrow(datasets)-(nrow(forecastData) + nrow(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
 
     # using the reshape function to combine all the datasets, melt data so that each row is a unique id-variable combination
     datasetsCombi <- melt(datasets[, c('time', 'Actual', 'Fitted')], id='time')
 
     ggplot(datasetsCombi,  aes(x=time,  y=value)) +
       geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='#56B4E9') +
-      geom_line(aes(colour=variable), size=0.8) +
+      geom_line(aes(colour=variable), size=1) +
+      scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
       scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
-      # geom_vline(x=max(actualData$time),  lty=2) +
       xlab('Day of the Week') + ylab('Estimated number of people on the bus') +
-      theme_economist_white(base_size=10,gray_bg=FALSE) +
-      scale_colour_economist(labels = c("Current", "Forecast"))
+      theme_economist_white(base_size=10,gray_bg=FALSE)
 
   })
   
+  
+  #Getting Time now to react to queries incoming
+  getMins <- function(data) {
+    hour <- as.numeric(substr(data,12,13))
+    min <- as.numeric(substr(data,15,16))
+    timequery <- (hour*60)+(min)
+    return(timequery)
+  }#end of getMins
+  
+  instant <- Sys.time()
+  insta <- getMins(instant)
+  #BEN------------------------------------------
   
   
   ####################   Changing Select Inputs by Bus Service  ####################
