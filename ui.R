@@ -11,7 +11,7 @@ allStops <- c("PGP","Kent_Ridge_MRT","NUH","LT29","UHall","Opp_UHC","YIH","Centr
               "Opp_YIH","Museum","UHC","Opp_UHall","S17","Opp_NUH","Opp_Kent_Ridge_MRT","PGPR","CP11","UTown")
 
 
-ui <- dashboardPage(skin = "yellow",
+ui <- dashboardPage(skin = "blue",
                     dashboardHeader(title = "Route Ranger"),
                     ## Sidebar content
                     dashboardSidebar(
@@ -28,19 +28,23 @@ ui <- dashboardPage(skin = "yellow",
                         tabItem(tabName = "dashboard",
                                 useShinyjs(),
                                 fluidRow(
-                                  valueBoxOutput(width = 6,"startStopBox"),
+                                  box(
+                                    status = 'primary',
+                                    width = 7, 
+                                    plotOutput("forecastCurrent")),
+                                  valueBoxOutput(width = 5,"startStopBox"),
                                   
-                                  valueBoxOutput(width = 6,"avgVolBox")
+                                  valueBoxOutput(width = 5,"avgVolBox"),
+                                  p(actionButton("show", "Login/Logout"), align = "center", style = "padding-left:10px")
                                 ),
                                 fluidRow(
                                   box(
-                                    width = 12,
-                                    plotOutput("forecastCurrent")),
-                                  box(
+                                    status = 'primary',
+                                    # textOutput("display_username"),
+                                    "Forecast of the Week",
                                     width = 12,
                                     plotOutput("forecastAcrossWeek"))
-                                ),
-                                actionButton("show", "Login/Logout")
+                                )
                         ),
                         
                         tabItem(tabName = "bus",
