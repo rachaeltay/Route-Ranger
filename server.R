@@ -111,8 +111,8 @@ server <- function(input, output, session) {
   
   showModal(modalDialog(
     title = "Welcome to The Route Ranger",
-    googleAuthUI("gauth_login"),
     tags$caption("Log in with your google account to keep track of your travelling history!"),
+    googleAuthUI("gauth_login"),
     p(
       tags$b("README"),
       tags$h4("Dashboard Tab"),
