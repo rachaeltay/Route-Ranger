@@ -117,7 +117,7 @@ server <- function(input, output, session) {
   output$avgVolBox <- renderValueBox({
     valueBox(
       # get last value of avgVol
-      pdf$avgVol[[-1]], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
+      dayTable$avgVol[[-1]], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
       color = "yellow"
     )
   })
@@ -250,7 +250,6 @@ server <- function(input, output, session) {
     print(df)
     dfAvgVol[[stop]]<-df
     flag <- FALSE
-    # extracting the avgVol data END 
     
     return(dfAvgVol)
     
@@ -294,15 +293,15 @@ server <- function(input, output, session) {
     
     # Ensure only one day data
     # dataframe used to plot
-    pdf <- dfAvgVol[[startStop]] 
-    print("pdf")
-    print(pdf)
-    numR <- nrow(pdf)
-    ts <-  pdf$timestamp
+    dayTable <- dfAvgVol[[startStop]] 
+    print("dayTable")
+    print(dayTable)
+    numR <- nrow(dayTable)
+    ts <-  dayTable$timestamp
     
     # time across a day
     today <- toString(as.Date("2017-10-23 07:00:00 MYT")) #change to Sys.date() once rigged
-    data <- pdf[grep(today, ts),]
+    data <- dayTable[grep(today, ts),]
    
     # Time Series Object
     busCapTS <- data$avgVol
@@ -393,12 +392,12 @@ output$forecastAcrossWeek <- renderPlot({
 #     timequery <- (hour*60)+(min)
 #     return(timequery)
 #   }#end of getMins
-#   
+# 
 #   instant <- Sys.time()
 #   insta <- getMins(instant)
 #   #BEN------------------------------------------
-#   
-#   
+# 
+# 
 #   ####################   Changing Select Inputs by Bus Service  ####################
 #   observe({
 #     if(input$busService == "A1") {
@@ -459,22 +458,22 @@ output$forecastAcrossWeek <- renderPlot({
 #     }
 #   })#End of observe
 #   ##############################################################
-#   
+# 
 #   output$click <- renderText({
 #     "Click to refresh, otherwise wait 10s after Submit Crowd Level"
 #   })# End of output$click
-#   
+# 
 #   #STARTBEN ------------------------------------------------------->
-#   
+# 
 #   observeEvent(input$submitQ,{
-#     
+# 
 #     timeN <- function(t) {
 #       now <- as.character(Sys.time())
 #       hr <- as.numeric(substr(now,12,13))
 #       min <- as.numeric(substr(now,15,16))
-#       
+# 
 #       if(min<10) {min <- paste("0",as.character(min))}
-#       
+# 
 #       last <- "AM"
 #       if (hr > 12){
 #         hr <- as.character(hr-12)
@@ -484,17 +483,17 @@ output$forecastAcrossWeek <- renderPlot({
 #       full <- paste(hr,":",min," ",last)
 #       return(full)
 #     }
-#     
+# 
 #     if(insta > 1380 || insta <435) {
 #       pastQ <- loadquery()
 #       print(pastQ)
-#       
+# 
 #       if(nrow(pastQ)==0) {}
 #       else{
 #         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
 #         print(pQ)
 #         print("pQ")
-#         
+# 
 #         forecast <- pastQ["rETA"]
 #         movAvg <- as.data.frame(ma(forecast,order=3))
 #         print(movAvg)
@@ -502,8 +501,8 @@ output$forecastAcrossWeek <- renderPlot({
 #         df <- df[4:nrow(df)-1,]
 #         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
 #         df[[1]] <- strptime(df[[1]], "%Y-%m-%d %H:%M:%S")
-#         
-#         
+# 
+# 
 #         output$ma <- renderPlot(
 #           ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
 #           +geom_line(aes(y=V1),color="red")+geom_line(aes(y=pETA),color="blue")+
@@ -512,52 +511,52 @@ output$forecastAcrossWeek <- renderPlot({
 #             labs(x = "Time Of Query", y="Actual ETA")+
 #             theme(panel.background=element_rect(fill="lightblue"))
 #         )
-#         
+# 
 #         output$todayDate <- renderValueBox({
 #           valueBox(
 #             as.character(timeN()), "Time", icon = icon("clock-o"),
 #             color = "blue"
 #           )
 #         })
-#         
+# 
 #         output$error <- renderValueBox({
 #           valueBox(
 #             paste("Mean Square Error :" ,"0", "min(s)"), "Mean Square Error", icon = icon("times-rectangle"),
 #             color = "blue"
 #           )
 #         })
-#         
+# 
 #         output$ETA <- renderValueBox({
 #           valueBox(
-#             "Not Available", "Waiting Time", 
+#             "Not Available", "Waiting Time",
 #             color = "blue"
 #           )
 #         })
 #       }#end of else
-#       
-#       
+# 
+# 
 #       #endOutput
-#       
+# 
 #     }#end of IF
-#     
+# 
 #     else{
-#       
+# 
 #       getCurrentTime = reactive({
 #         #timeNow Manipulation ------------------------------------------------ben
 #         getTime() # Changed - ZJ
 #         #end of getting timeNow-----------------------------------------------ben
 #       })
-#       
+# 
 #       #Start of select data -------------------------------------------------->
 #       pastQ <- loadquery()
 #       print(pastQ)
-#       
+# 
 #       if(nrow(pastQ)==0) {}
 #       else{
 #         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
 #         print(pQ)
 #         print("pQ")
-#         
+# 
 #         forecast <- pastQ["rETA"]
 #         movAvg <- as.data.frame(ma(forecast,order=3))
 #         print(movAvg)
@@ -565,16 +564,16 @@ output$forecastAcrossWeek <- renderPlot({
 #         df <- df[4:nrow(df)-1,]
 #         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
 #         df[[1]] <- strptime(df[[1]], "%Y-%m-%d %H:%M:%S")
-#         
-#         # View(df)      
-#         # View(df)      
+# 
+#         # View(df)
+#         # View(df)
 #         real <- df["rETA"][1:nrow(df),]
 #         actual <- df["V1"][1:nrow(df),]
-#         
+# 
 #         error <- mse(actual,real)
 #         err <- substr(as.character(error),1,4)
-#  
-#         
+# 
+# 
 #         output$ma <- renderPlot(
 #           ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
 #           +geom_line(aes(y=V1),color="red")+geom_line(aes(y=pETA),color="blue")+
@@ -585,19 +584,19 @@ output$forecastAcrossWeek <- renderPlot({
 #         )
 #       }#end of else
 #       #Start of select data ------
-#       
+# 
 #       selectdata = reactive({
 #         ctr <- 0
 #         realeta <- 0
 #         flag =TRUE
-#         
+# 
 #         firstbus <- loadtime(isolate(input$busService))
 #         firstbusTime <- firstbus["start"][1,] #first bus time
-#         
+# 
 #         stopIndex <- loadindex(isolate(input$startStop))
 #         currIndex <- stopIndex[isolate(input$busService)][1,]
 #         if (currIndex == 0) { realeta <- "Wrong Inputs"}
-#         
+# 
 #         else {
 #           while(flag){
 #             eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - getTime()
@@ -605,21 +604,21 @@ output$forecastAcrossWeek <- renderPlot({
 #               flag = FALSE
 #               realeta <- as.character(eta)
 #             }#endif
-#             
+# 
 #             else {
 #               ctr <- ctr +1
 #             }#endelse
 #           }#end of while
 #         }#end of else
-#         
+# 
 #         return(realeta)
 #       }) #end of selectdata -------------------------------------------->
-#       
+# 
 #       #START GetBUs ---------------------------------------------------->
 #       getBus = reactive({
 #         getBusId() # Changed - ZJ
 #       }) #end of getBUS -------------------------------------------->
-#       
+# 
 #       #for zongjie part
 #       queryTable <- c("bus","stopId","busIdx","realIdx","pETA","timeArr","rETA","destinationBusStop","timestamp")
 # 
@@ -640,12 +639,12 @@ output$forecastAcrossWeek <- renderPlot({
 #         insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realIdx","pETA","timeArr","rETA","destinationBusStop","timestamp")],auto_unbox = TRUE)
 #       })
 #       #end of sending data to db
-#       
+# 
 #       #send data to db START
 #       if(selectdata() == "Wrong Inputs"){}
 #       else{saveResponses(insertQuery())}
 #       #send data to db END
-#       
+# 
 #       timeN <- function(t) {
 #         now <- as.character(Sys.time())
 #         hr <- as.numeric(substr(now,12,13))
@@ -659,39 +658,39 @@ output$forecastAcrossWeek <- renderPlot({
 #         full <- paste(hr,":",min," ",last)
 #         return(full)
 #       }
-#       
+# 
 #       output$todayDate <- renderValueBox({
 #         valueBox(
 #           as.character(timeN()), "Time", icon = icon("clock-o"),
 #           color = "blue"
 #         )
 #       }) #END OF TIME VB
-#       
+# 
 #       output$error <- renderValueBox({
 #         valueBox(
 #           paste("Mean Square Error :" ,as.character(err), "min(s)"), "Mean Square Error", icon = icon("times-rectangle"),
 #           color = "blue"
 #         )
 #       })#end of MSE VB
-#       
+# 
 #       output$ETA <- renderValueBox({
 #         valueBox(
-#           paste("ETA:", as.character(selectdata()), "min(s)"), "Waiting Time", 
+#           paste("ETA:", as.character(selectdata()), "min(s)"), "Waiting Time",
 #           color = "blue"
 #         )
 #       })#end of ETA VB
-#       
-#       
+# 
+# 
 #     }#end of else
 #   })#end of q
-#   
-#   
+# 
+# 
 #   if(insta > 1380 || insta <435){}
 #   else{
-#     
+# 
 #     observeEvent(input$submitV, {
-#       
-#       
+# 
+# 
 #       getActualTime = reactive({
 #         dtime <- Sys.time()
 #         dtime <- as.character(dtime)
@@ -700,23 +699,23 @@ output$forecastAcrossWeek <- renderPlot({
 #         atimeNow <- (anowhr*60)+(anowmin)
 #         return(atimeNow)
 #       })
-#       
+# 
 #       arrTime <- getActualTime() #use in for loop
-#       
+# 
 #       queryData <- loadquery() #generate list
 #       numQuery <- nrow(queryData)
 #       print(numQuery)
 #       #print(queryData)
-#       
+# 
 #       #print(queryData[1,])
-#       
+# 
 #       getMins <- function(data) {
 #         hour <- as.numeric(substr(data,12,13))
 #         min <- as.numeric(substr(data,15,16))
 #         timequery <- (hour*60)+(min)
 #         return(timequery)
 #       }#end of getMins
-#       
+# 
 #       #making changes
 #       for (i in 1:numQuery){ #
 #         instance <- queryData[i,]
@@ -728,41 +727,41 @@ output$forecastAcrossWeek <- renderPlot({
 #           if (queryData[i,]["realIdx"][1,]==whatBusIdx(queryData[i,]["timestamp"][1,])){
 #             reta <- arrTime - qtime
 #             queryData[i,]["rETA"][1,] <- reta
-#             
+# 
 #             updateQ <- c(paste0('{
 #                "bus" : "', queryData[i,]["bus"][1,], '",
 #                "stopId": "', queryData[i,]["stopId"][1,], '",
 #                "busIdx": "', queryData[i,]["busIdx"][1,], '",
-#                "timestamp" :  "', queryData[i,]["timestamp"][1,], '"          
+#                "timestamp" :  "', queryData[i,]["timestamp"][1,], '"
 #                                 }'
 #             ))
-#             
+# 
 #             setArr <- c(paste0( '{ "$set": { "timeArr": "',as.character(arrTime),'"  } }'  ))
 #             setETA <- c(paste0( '{ "$set": { "rETA": "',as.character(reta),'"  } }'  ))
-#             
+# 
 #             queryList$update(updateQ, setArr, multiple = FALSE)
 #             queryList$update(updateQ, setETA, multiple = FALSE)
-#             
+# 
 #             }
 #           }
 #         }
 #         #start updating mongo
-#         
-#         
-#       }#end 
-#       # 
+# 
+# 
+#       }#end
+#       #
 #       # print(queryData)
 #       # dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
-#       
+# 
 #       pastQ <- loadquery()
 #       print(pastQ)
-#       
+# 
 #       if(nrow(pastQ)==0) {}
 #       else{
 #         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
 #         print(pQ)
 #         print("pQ")
-#         
+# 
 #         forecast <- pastQ["rETA"]
 #         movAvg <- as.data.frame(ma(forecast,order=3))
 #         print(movAvg)
@@ -770,23 +769,23 @@ output$forecastAcrossWeek <- renderPlot({
 #         df <- df[4:nrow(df)-1,]
 #         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
 #         df[[1]] <- strptime(df[[1]], "%Y-%m-%d %H:%M:%S")
-#         
-#         # View(df)      
-#         # View(df)      
+# 
+#         # View(df)
+#         # View(df)
 #         real <- df["rETA"][1:nrow(df),]
 #         actual <- df["V1"][1:nrow(df),]
-#         
+# 
 #         error <- mse(actual,real)
 #         err <- substr(as.character(error),1,4)
 #         # #print(typeof(error))
-#         # output$error <- renderText({ 
+#         # output$error <- renderText({
 #         #   input$submitQ
 #         #   #realeta = selectdata()
 #         #   paste("Mean Square Error :" ,as.character(error), "minutes")
 #         # })
-#         
-#         
-#         
+# 
+# 
+# 
 #         output$ma <- renderPlot(
 #           ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
 #           +geom_line(aes(y=V1),color="red")+geom_line(aes(y=pETA),color="blue")+
@@ -798,22 +797,22 @@ output$forecastAcrossWeek <- renderPlot({
 # 
 #         output$ETA <- renderValueBox({
 #           valueBox(
-#             "ETA: Arrived", "Waiting Time", 
+#             "ETA: Arrived", "Waiting Time",
 #             color = "blue"
 #           )
 #         })#end of ETA VB
-#       
-#       
-#       
+# 
+# 
+# 
 #     #end of observerEvent submitV
 # } }) }
 #   #ENDBEN --------------------------------------------------------->
-#   
-#   
+# 
+# 
 #   #Pre-cond: Waits for submitV button to be depressed
 #   #Post-Cond: Returns a JSON file of user responses
 #   formData <- eventReactive(input$submitV, {
-#     
+# 
 #     responseTable$busId <- getBusId()
 #     responseTable$busService <- isolate(input$busService)
 #     responseTable$startStop <- isolate(input$startStop)
@@ -824,11 +823,11 @@ output$forecastAcrossWeek <- renderPlot({
 #     data <- toJSON(responseTable[c("busId", "busService", "startStop", "endStop",
 #                                    "busCapacity", "timestamp")], auto_unbox = TRUE)
 #   })# End of formData
-#   
+# 
 #   #Waits for Submit button to be depressed
 #   observeEvent(input$submitV, {
-#     # Remove response(s) where startStop of User EQUALS the destination stop of other users 
-#     # AND the busService of all responses are the same 
+#     # Remove response(s) where startStop of User EQUALS the destination stop of other users
+#     # AND the busService of all responses are the same
 #     # AND busId of all responses are the same
 #     # (When the bus reached the endStop of other users)
 #     dbDyResponses$remove(query = toString(toJSON(list(endStop = isolate(input$startStop),
@@ -838,15 +837,15 @@ output$forecastAcrossWeek <- renderPlot({
 #     insertDyResponse(formData()) #Inserting data into database
 #     print("Submitted")
 #   })# End of observeEvent
-#   
+# 
 #   #Pre-cond: Waits for submit button to be depressed
 #   #Post-Cond: Retrieves all user responses, and returns a JSON file with
-#   #           the calculated avgVol 
+#   #           the calculated avgVol
 #   dyAvgVolData <- eventReactive(input$submitV, {
 #     dyAvgVolTable$busId <- getBusId()
 #     dyAvgVolTable$busService <- isolate(input$busService)
 #     #loadDyResponses(filterBusService, filterBusId, date)
-#     dyAvgVolTable$dyAvgVol <- ceiling(aggData(loadDyResponses("all", getBusId(), toString(as.Date(Sys.Date())))$busCapacity)/3*40) 
+#     dyAvgVolTable$dyAvgVol <- ceiling(aggData(loadDyResponses("all", getBusId(), toString(as.Date(Sys.Date())))$busCapacity)/3*40)
 #     dyAvgVolTable$startStop <- isolate(input$startStop)
 #     dyAvgVolTable$endStop <- isolate(input$endStop)
 #     dyAvgVolTable$timestamp <- myTimestamp() #ISODate timestamp
@@ -854,12 +853,12 @@ output$forecastAcrossWeek <- renderPlot({
 #     data <- toJSON(dyAvgVolTable[c("busId","busService", "startStop", "endStop",
 #                                    "dyAvgVol", "timestamp")], auto_unbox = TRUE)
 #   })# End of dyAvgVolData
-#   
+# 
 #   # #Convenient Deletion of all rows - will be removed
 #   # observeEvent(input$clear, {
-#   #   
+#   #
 #   #   data <- queryList$remove('{}')
-#   #   
+#   #
 #   #   dbDyResponses$remove(query = "{}")
 #   #   dbResponses$remove(query = "{}")
 #   #   dbDyAvgVol$remove(query = "{}")
@@ -867,7 +866,7 @@ output$forecastAcrossWeek <- renderPlot({
 #   #   # Inserts buffer data
 #   #   buffer()
 #   # })# End of observeEvent
-#   
+# 
 #   # observe({
 #   #   #Pre-cond: Waits for submitV button to be depressed
 #   #   # #Post-cond: Renders data table of all previous responses
@@ -876,13 +875,13 @@ output$forecastAcrossWeek <- renderPlot({
 #   #     loadDyResponses("all", getBusId(), toString(as.Date(Sys.Date()))) #loadDyResponses(filterBusService, filterBusId, date)
 #   #   })# End of output$responses
 #   # })# End of observe
-#   
+# 
 #   #Pre-cond: Integer in millisecond
-#   #Post-cond: Reactive countdown timer 
+#   #Post-cond: Reactive countdown timer
 #   autoInvalidate <- function(timeMS) {
 #     invalidateLater(timeMS, session)
 #   }
-#   
+# 
 #   # observe({
 #   #   #Pre-cond: Waits for submitV button to be depressed
 #   #   # #Post-cond: Renders data table of all previous responses
@@ -891,7 +890,7 @@ output$forecastAcrossWeek <- renderPlot({
 #   #     loadDyResponses("all", getBusId()) # #loadDyResponses(filterBusService, busId)
 #   #   })
 #   # })
-#   
+# 
 #   #Pre-cond: Waits for submitV button to be depressed
 #   #Post-cond: render plot of avgVol over time/ busstop
 #   output$graph <- renderPlot({
@@ -904,8 +903,8 @@ output$forecastAcrossWeek <- renderPlot({
 #       buffer()
 #     }# End of if
 #     # if not (Secondlast Stop && number of rows in average is 3)
-#     if(!(isolate(input$startStop) == getSecondLastStop(isolate(input$busService)) && 
-#          nrow(dyAvgVol) == 3)) { 
+#     if(!(isolate(input$startStop) == getSecondLastStop(isolate(input$busService)) &&
+#          nrow(dyAvgVol) == 3)) {
 #       isolate(insertDyAvgVol(dyAvgVolData()))
 #     }# End of if
 #     average <- loadDyAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
@@ -914,58 +913,58 @@ output$forecastAcrossWeek <- renderPlot({
 #     # print(average)
 #     #check if false data has been inserted
 #     if(average['startStop'][nrow(average)-1,] == "last" &&
-#        average['endStop'][nrow(average)-1,] == "last") { 
+#        average['endStop'][nrow(average)-1,] == "last") {
 #       #inserts busCapacity for avgVol at Last Stop
-#       insertAvgVol(toJSON(list(busId = getBusId(), busService = average['busService'][1,], 
-#                                startStop = getLastStop(isolate(input$busService)),  
-#                                avgVol = 1, timestamp = myTimestamp()), auto_unbox = TRUE)) 
+#       insertAvgVol(toJSON(list(busId = getBusId(), busService = average['busService'][1,],
+#                                startStop = getLastStop(isolate(input$busService)),
+#                                avgVol = 1, timestamp = myTimestamp()), auto_unbox = TRUE))
 #       dbDyAvgVol$remove(query = "{}") #clears false data
 #       # Inserts buffer data
 #       buffer()
 #     }# End of if
 #     #Ensures that last 2 entries in dyAvgVol are equal and 3rd last entry is different, to determine when to sample
-#     else if(nrow(average) > 2 && 
+#     else if(nrow(average) > 2 &&
 #             (average['dyAvgVol'][nrow(average),] == average['dyAvgVol'][nrow(average)-1,] &&
 #              average['dyAvgVol'][nrow(average)-1,] != average['dyAvgVol'][nrow(average)-2,] )) {
-#       
+# 
 #       avgVolTable$busId <- average['busId'][nrow(average),]
 #       avgVolTable$busService <- average['busService'][nrow(average),]
 #       avgVolTable$startStop <- average['startStop'][nrow(average),]
 #       avgVolTable$avgVol <- average['dyAvgVol'][nrow(average),]
 #       avgVolTable$timestamp <- average['timestamp'][nrow(average),]
-#       data <- toJSON(avgVolTable[c("busId", "busService", "startStop", "avgVol", 
+#       data <- toJSON(avgVolTable[c("busId", "busService", "startStop", "avgVol",
 #                                    "timestamp")], auto_unbox = TRUE)
 #       insertAvgVol(data) #insert sampled data
 #     }# End of elseif
 #     plotAvgVol <- loadAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date()))) #loadAvgVol(filterBusService, filterBusId, date)
 #     # Checks when the bus has reached second last stop
-#     if(nrow(plotAvgVol) != 0 && 
-#        plotAvgVol['startStop'][nrow(plotAvgVol),] == getSecondLastStop(isolate(input$busService))) { 
-#       dbDyAvgVol$remove(query = toString(toJSON(list(busService = isolate(input$busService), busId = getBusId()), 
-#                                                 auto_unbox = TRUE))) 
+#     if(nrow(plotAvgVol) != 0 &&
+#        plotAvgVol['startStop'][nrow(plotAvgVol),] == getSecondLastStop(isolate(input$busService))) {
+#       dbDyAvgVol$remove(query = toString(toJSON(list(busService = isolate(input$busService), busId = getBusId()),
+#                                                 auto_unbox = TRUE)))
 #       #Inserts false data to indicate bus has reached last stop
-#       dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "last", endStop = "last", 
-#                                     dyAvgVol = 1, timestamp = myTimestamp()), auto_unbox = TRUE)) 
+#       dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "last", endStop = "last",
+#                                     dyAvgVol = 1, timestamp = myTimestamp()), auto_unbox = TRUE))
 #     }# End of if
 #     ####################################################################################
-#     
+# 
 #     if(nrow(plotAvgVol) != 0){
-#       ggplot(data=plotAvgVol, aes(x= factor(startStop, levels=unique(startStop)), y = avgVol, ymin = 0, ymax = 40, fill = avgVol)) + 
+#       ggplot(data=plotAvgVol, aes(x= factor(startStop, levels=unique(startStop)), y = avgVol, ymin = 0, ymax = 40, fill = avgVol)) +
 #         scale_y_continuous(limit = c(0, 40), expand = c(0,0)) + scale_x_discrete(expand = c(0,0)) +
 #         geom_bar(stat = "identity") + labs(x = "Bus Stops") +
-#         ggtitle(paste0(isolate(input$busService)," ", "Bus ID: ", "(", getBusId(), ")")) + 
+#         ggtitle(paste0(isolate(input$busService)," ", "Bus ID: ", "(", getBusId(), ")")) +
 #         theme(axis.text.x = element_text(color="black", size=10, angle=45, vjust = 0.5)) +
 #         scale_fill_continuous(low="green", high="red") +
 #         theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
 #     }# End of if
 #   })# End of output$graph
-#   
+# 
 #   output$avgVolPerRoute <- renderPlot({ #Updated
 #     #loadAvgVol(filterBusService, filterBusId, date = "")
 #     busId <- as.numeric(input$busId)
 #     temp <- seconds_to_period(7*60*60+30*60+15*60*(busId-1))
 #     startTime <- sprintf('%02d:%02d', temp@hour, minute(temp))
-#     
+# 
 #     data <- loadAvgVol(isolate(input$busService), busId) # * use for real data *
 #     ggplot(data, aes(x=factor(startStop, levels=unique(startStop)), y=avgVol)) +
 #       geom_boxplot(outlier.shape = NA) +
@@ -976,9 +975,9 @@ output$forecastAcrossWeek <- renderPlot({
 #       theme(axis.text.x = element_text(color="black", size=12, angle=90, vjust = 0.5)) +
 #       theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
 #   })# End of output$avgVolTrendPlot
-#   
+# 
 #   # output$realTimeRiggedData <- renderPlot({
-#   #   
+#   #
 #   #   stops <- data.frame("startStop" = c("PGP","Kent_Ridge_MRT","NUH", "LT29" , "UHall", "Opp_UHC", "YIH", "Central_Library", "LT13", "AS7", "COM2",
 #   #                                       "BIZ2", "PGP_Hse_12", "PGP_Hse_7", "PGP"))
 #   #   #loadAvgVol(filterBusService, filterBusId, date = "")
@@ -1000,27 +999,27 @@ output$forecastAcrossWeek <- renderPlot({
 #   #     scale_fill_continuous(low="green", high="red") +
 #   #     theme(plot.title = element_text(family = "Comic Sans MS", color="tomato", face="bold", size=28))
 #   # })# End of output$realTimeRiggedData
-#   
-#   
+# 
+# 
 #   ###################### FUNCTIONS ######################
-#   
+# 
 #   #Pre-cond: Waits for submitV button to be depressed
 #   #Post-cond: Renders mean value of Bus Capacity as Text
 #   # output$stats <- renderText({
-#   #   input$submitV 
+#   #   input$submitV
 #   #   avg <- aggData(loadDyResponses(input$busService, getBusId(), toString(as.Date(Sys.Date())))) #loadDyResponses(filterBusService, filterBusId, date)
 #   #   print(avg)
 #   #   paste("Mean: ", avg)
 #   # })# End of output$stats
-#   
+# 
 #   getLastStop <- function(busService){ # Changed - ZJ
 #     busStop <- finale$find(query = toString(toJSON(list(busService = isolate(input$busService)), auto_unbox = TRUE)))['last'][1,]
 #   }# End of getLastStop()
-#   
+# 
 #   getSecondLastStop <- function(busService){ # Changed - ZJ
 #     busStop <- finale$find(query = toString(toJSON(list(busService = isolate(input$busService)), auto_unbox = TRUE)))['secondlast'][1,]
 #   }# End of getSecondLastStop()
-#   
+# 
 #   #Pre-cond: nil
 #   #Post-cond: returns ISODate format of date and time
 #   myTimestamp <- function() {
@@ -1032,30 +1031,30 @@ output$forecastAcrossWeek <- renderPlot({
 #     sec <- format(Sys.time(), "%OS")
 #     newDate <- ISOdate(year, month, day, hour, min, sec)
 #   }# End of myTimestamp()
-#   
+# 
 #   #Pre-cond: JSON of user responses
 #   #Post-cond: Inserts JSON of user response into database
 #   insertDyResponse <- function(data) {
 #     dbDyResponses$insert(data)
 #   }# End of insertDyResponse
-#   
+# 
 #   #Pre-cond: JSON of avgVol of buses
 #   #Post-cond: Inserts JSON of avgVOl of buses into database
 #   insertDyAvgVol <- function(data) {
 #     dbDyAvgVol$insert(data)
 #   }# End of insertDyAvgVol
-#   
+# 
 #   #Pre-cond: JSON of avgVol of buses
 #   #Post-cond: Inserts JSON of avgVOl of buses into database
 #   insertAvgVol <- function(data) {
 #     dbAvgVol$insert(data)
 #   }# End of insertAvgVol
-#   
+# 
 #   #Pre-cond: Allows querying by "A1", "A2", "D1", "D2", "all"
 #   #Post-cond: Reads responses by user with specified query
 #   #           and returns a dataframe of the result
 #   loadDyResponses <- function(filterBusService, filterBusId, date = "") {
-#     # Query entries based on filter 
+#     # Query entries based on filter
 #     if(filterBusService == "all"){
 #       data <- dbDyResponses$find()
 #     }# End of if
@@ -1063,17 +1062,17 @@ output$forecastAcrossWeek <- renderPlot({
 #       data <- dbDyResponses$find(query = toString(toJSON(list(busService = filterBusService,
 #                                                               busId = filterBusId), auto_unbox = TRUE)))
 #       if(date != "") {
-#         data <- data[grep(date, data$timestamp),] # *** use this if data with accurate timestamp is available ***  
+#         data <- data[grep(date, data$timestamp),] # *** use this if data with accurate timestamp is available ***
 #       }
 #     }# End of else
 #     data
 #   }# End of loadDyResponses
-#   
+# 
 #   #Pre-cond: Allows querying by "A1", "A2", "D1", "D2", "all"
 #   #Post-cond: Reads avgVol of buses with specified query
 #   #           and returns a dataframe of the result
 #   loadDyAvgVol <- function(filterBusService, filterBusId = 0, date = "") {
-#     # Query entries based on filter 
+#     # Query entries based on filter
 #     if(filterBusService == "all"){
 #       data <- dbDyAvgVol$find()
 #     }# End of if
@@ -1081,17 +1080,17 @@ output$forecastAcrossWeek <- renderPlot({
 #       data <- dbDyAvgVol$find(query = toString(toJSON(list(busService = filterBusService,
 #                                                            busId = filterBusId), auto_unbox = TRUE)))
 #       if(date != "") {
-#         data <- data[grep(date, data$timestamp),] # *** use this if data with accurate timestamp is available ***  
+#         data <- data[grep(date, data$timestamp),] # *** use this if data with accurate timestamp is available ***
 #       }
 #     }# End of else
 #     data
 #   }# End of loadDyAvgVol
-#   
+# 
 #   #Pre-cond: Allows querying by "A1", "A2", "D1", "D2", "all"
 #   #Post-cond: Reads responses by user with specified query
 #   #           and returns a dataframe of the result
 #   loadAvgVol <- function(filterBusService, filterBusId = 0, date = "") {
-#     # Query entries based on filter 
+#     # Query entries based on filter
 #     if(filterBusService == "all"){
 #       data <- dbAvgVol$find()
 #     }# End of if
@@ -1099,12 +1098,12 @@ output$forecastAcrossWeek <- renderPlot({
 #       data <- dbAvgVol$find(query = toString(toJSON(list(busService = filterBusService,
 #                                                          busId = filterBusId), auto_unbox = TRUE)))
 #       if(date != "") {
-#         data <- data[grep(date, data$timestamp),] # *** use this if data with accurate timestamp is available ***  
+#         data <- data[grep(date, data$timestamp),] # *** use this if data with accurate timestamp is available ***
 #       }
 #     }# End of else
 #     data
 #   }# End of loadAvgVol
-#   
+# 
 #   #Pre-cond: JSON file of user response
 #   #Post-cond: Average Bus Capacity as integer
 #   aggData <- function(data) {
@@ -1112,28 +1111,28 @@ output$forecastAcrossWeek <- renderPlot({
 #     avgVol <- round(mean(data), 2)
 #     avgVol
 #   }# End of aggData()
-#   
+# 
 #   buffer <- function() {
-#     dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ", 
+#     dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ",
 #                                   dyAvgVol = 0, timestamp = myTimestamp()), auto_unbox = TRUE))
-#     dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ", 
+#     dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ",
 #                                   dyAvgVol = 0, timestamp = myTimestamp()), auto_unbox = TRUE))
-#     dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ", 
+#     dbDyAvgVol$insert(toJSON(list(busId = getBusId(), busService = isolate(input$busService), startStop = "", endStop = " ",
 #                                   dyAvgVol = 0, timestamp = myTimestamp()), auto_unbox = TRUE))
 #   }# End of buffer
-#   
+# 
 #   getBusId <- function() { # Changed - ZJ
 #     ctr <- 0
 #     realeta <- 0
 #     flag =TRUE
-#     
+# 
 #     firstbus <- loadtime(isolate(input$busService))
 #     firstbusTime <- firstbus["start"][1,] #first bus time
-#     
+# 
 #     stopIndex <- loadindex(isolate(input$startStop))
 #     currIndex <- stopIndex[isolate(input$busService)][1,]
 #     if (currIndex == 0) { realeta <- "Wrong Inputs"}
-#     
+# 
 #     else {
 #       while(flag){
 #         eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - getTime()
@@ -1141,7 +1140,7 @@ output$forecastAcrossWeek <- renderPlot({
 #           flag = FALSE
 #           realeta <- as.character(eta)
 #         }#endif
-#         
+# 
 #         else {
 #           ctr <- ctr +1
 #         }#endelse
@@ -1150,26 +1149,26 @@ output$forecastAcrossWeek <- renderPlot({
 #     #add new modulo
 #     return(ctr)
 #   }
-#   
+# 
 #   getMins <- function(data) {
 #     hour <- as.numeric(substr(data,12,13))
 #     min <- as.numeric(substr(data,15,16))
 #     timequery <- (hour*60)+(min)
 #     return(timequery)
 #   }#end of getMins
-#   
+# 
 #   whatBusIdx <- function(date) {
 #     ctr <- 0
 #     realeta <- 0
 #     flag =TRUE
-#     
+# 
 #     firstbus <- loadtime(isolate(input$busService))
 #     firstbusTime <- firstbus["start"][1,] #first bus time
 #     whatTime <- getMins(date)
 #     stopIndex <- loadindex(isolate(input$startStop))
 #     currIndex <- stopIndex[isolate(input$busService)][1,]
 #     if (currIndex == 0) { realeta <- "Wrong Inputs"}
-#     
+# 
 #     else {
 #       while(flag){
 #         eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - whatTime
@@ -1177,7 +1176,7 @@ output$forecastAcrossWeek <- renderPlot({
 #           flag = FALSE
 #           realeta <- as.character(eta)
 #         }#endif
-#         
+# 
 #         else {
 #           ctr <- ctr +1
 #         }#endelse
@@ -1186,19 +1185,19 @@ output$forecastAcrossWeek <- renderPlot({
 #     #add new modulo
 #     return(ctr)
 #   }#return correct busIdx of the timeQ
-#   
+# 
 #   getBusId <- function() { # Changed - ZJ
 #     ctr <- 0
 #     realeta <- 0
 #     flag =TRUE
-#     
+# 
 #     firstbus <- loadtime(isolate(input$busService))
 #     firstbusTime <- firstbus["start"][1,] #first bus time
-#     
+# 
 #     stopIndex <- loadindex(isolate(input$startStop))
 #     currIndex <- stopIndex[isolate(input$busService)][1,]
 #     if (currIndex == 0) { realeta <- "Wrong Inputs"}
-#     
+# 
 #     else {
 #       while(flag){
 #         eta <- (firstbusTime + (15*ctr) + ((currIndex-1)*5)) - getTime()
@@ -1206,7 +1205,7 @@ output$forecastAcrossWeek <- renderPlot({
 #           flag = FALSE
 #           realeta <- as.character(eta)
 #         }#endif
-#         
+# 
 #         else {
 #           ctr <- ctr +1
 #         }#endelse
@@ -1215,8 +1214,8 @@ output$forecastAcrossWeek <- renderPlot({
 #     #add new modulo
 #     return(ctr)
 #   }
-#   
-#   #NEW CHANGES 
+# 
+#   #NEW CHANGES
 #   gettimeOnly = reactive({
 #     #timeOOnly Manipulation ------------------------------------------------ben
 #     datetime <- Sys.time()
@@ -1225,8 +1224,8 @@ output$forecastAcrossWeek <- renderPlot({
 #     return(as.numeric(tnow))
 #     #end of getting timeonly-----------------------------------------------ben
 #   })
-#   
-#   
+# 
+# 
 #   getdateOnly = reactive({
 #     #timeOOnly Manipulation ------------------------------------------------ben
 #     datetime <- Sys.time()
@@ -1235,12 +1234,12 @@ output$forecastAcrossWeek <- renderPlot({
 #     return(dnow)
 #     #end of getting timeonly-----------------------------------------------ben
 #   })
-#   
+# 
 #   getTimeQ <- reactive({return(gettimeOnly())})
 #   getDateQ <- reactive({return(getdateOnly())})
 #   #END OF TIME CHANGES
-#   
-#   
+# 
+# 
 #   getTime <- function(){ # Changed - ZJ
 #     datetime <- Sys.time()
 #     datetime <- as.character(datetime)
@@ -1249,7 +1248,7 @@ output$forecastAcrossWeek <- renderPlot({
 #     timeNow <- (nowhr*60)+(nowmin)
 #     return(timeNow)
 #   }
-#   
+# 
 #   ############## Changed position of function - by ZJ ##############
 #   #query for required data ---------------------------------------------ben
 #   loadtime <- function(filter) {
@@ -1257,15 +1256,15 @@ output$forecastAcrossWeek <- renderPlot({
 #   }#end of loadtime
 # 
 #   loadindex <- function(filter) {
-#     stopIdx <- routeidx$find(query = toString(toJSON(list(stopId=isolate(input$startStop)),auto_unbox = TRUE)))   
+#     stopIdx <- routeidx$find(query = toString(toJSON(list(stopId=isolate(input$startStop)),auto_unbox = TRUE)))
 #   }#end of loadindex
-#   
+# 
 #   loadquery <- function(filter) {
 #     query <- queryList$find(query = toString(toJSON(list(bus=input$busService,stopId=isolate(input$startStop),busIdx=(as.character(getBusId()%%7))),auto_unbox = TRUE)))
 #   }#end of load query
-#   
-#   
-#   
+# 
+# 
+# 
 #   #new function for rachael to get start stop
 #   loadStart <- reactive({
 #     query <- queryList$find()
@@ -1273,19 +1272,19 @@ output$forecastAcrossWeek <- renderPlot({
 #     data <- query[num,]["stopId"][1,]
 #     return(data)
 #   })
-#   
-#   
+# 
+# 
 #   #end of db query -----------------------------------------------------ben
-#   
+# 
 #   #Functions to save data to db ----------------------------------------saveDB/Ben
-#   
+# 
 #   saveResponses <- function(data) {
 #     queryList$insert(data)
 #   }#end of save responses
-#   
+# 
 #   #ENDFunctions saveDB--------------------------------------------------saveDB/Ben
 #   ###############################################################
-#   
+# 
 #   getStartDate <- function(date) {
 #     if (input$timeFrame == "Monthly") {
 #       paste0(substr(date,0,8), "01", 'T00:00:00Z')
@@ -1293,7 +1292,7 @@ output$forecastAcrossWeek <- renderPlot({
 #       paste0(date, 'T00:00:00Z')
 #     }
 #   }
-#   
+# 
 #   getEndDate <- function(date) {
 #     if (input$timeFrame == "Monthly") {
 #       paste0(substr(date,0,8), "31", 'T00:00:00Z')
@@ -1301,14 +1300,14 @@ output$forecastAcrossWeek <- renderPlot({
 #       paste0(date, 'T00:00:00Z')
 #     }
 #   }
-#   
+# 
 #   getBoarding <- reactive({
 #     if (input$timeFrame != "Hourly") {
 #       shiny::validate(
 #         need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
 #       )
 #     }
-#     
+# 
 #     if (input$timeFrame == "Hourly") {
 #       query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"}, "$lt":{"$date":"', getEndDate(input$startDate1+1), '"}}}},
 #                       {"$project": {"hour": {"$hour":"$timestamp"}}},
@@ -1331,14 +1330,14 @@ output$forecastAcrossWeek <- renderPlot({
 #       )
 #     }
 #     })
-#   
+# 
 #   getAlighting <- reactive({
 #     if (input$timeFrame != "Hourly") {
 #       shiny::validate(
 #         need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
 #       )
 #     }
-#     
+# 
 #     if (input$timeFrame == "Hourly") {
 #       query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1),'"}, "$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}},
 #                       {"$project": {"hour": {"$hour":"$timestamp"}}},
@@ -1361,24 +1360,24 @@ output$forecastAcrossWeek <- renderPlot({
 #       )
 #     }
 #     })
-#   
+# 
 #   getPlot <- eventReactive(input$genResult, {
 #     busStop <- isolate(input$busStop)
 #     timeFrame <- isolate(input$timeFrame)
 #     start1 <- getStartDate(input$startDate1)
 #     start2 <- getStartDate(input$startDate2)
 #     end <- getEndDate(input$endDate)
-#     
+# 
 #     boarding <- queryList$aggregate(isolate(getBoarding()))
 #     alighting <- queryList$aggregate(isolate(getAlighting()))
-#     
+# 
 #     boarding <- data.frame(boarding)
 #     boarding <- cbind(boarding, "Boarding")
 #     colnames(boarding) <- c("timeFrame", "Count", "Group")
 #     alighting <- data.frame(alighting)
 #     alighting <- cbind(alighting, "Alighting")
 #     colnames(alighting) <- c("timeFrame", "Count", "Group")
-#     
+# 
 #     if (timeFrame == "Hourly") {
 #       boarding$timeFrame <- lapply(boarding$timeFrame$hour, {function(x) x = as.character(x)})
 #       boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
@@ -1404,27 +1403,27 @@ output$forecastAcrossWeek <- renderPlot({
 #       boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})
 #       alighting$timeFrame <- lapply(alighting$timeFrame$month, {function(x) x = as.character(x)})
 #       alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-#       alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})  
+#       alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})
 #     }
-#     
+# 
 #     boarding <- boarding[order(unlist(boarding$timeFrame)),]
 #     alighting <- alighting[order(unlist(alighting$timeFrame)),]
 #     combined <- rbind(alighting, boarding)
 #     combined <- combined[with(combined, order(combined$Group, unlist(combined$timeFrame))),]
-#     
+# 
 #     if (timeFrame == "Daily") {
 #       boardingSMAtimeFrame <- t(data.frame(tail(boarding$timeFrame, nrow(boarding)-2)))
 #       alightingSMAtimeFrame <- t(data.frame(tail(alighting$timeFrame, nrow(alighting)-2)))
 #       SMAtimeFrame <- list(rbind(alightingSMAtimeFrame, boardingSMAtimeFrame))
 #       SMAtimeFrame <- lapply(SMAtimeFrame[1], {function(x) x = as.POSIXct(x)+days(1)})
-#       
+# 
 #       boardingSMA <- data.frame(SMA(ts(boarding$Count), 3), "Forecasted boarding")
 #       colnames(boardingSMA) <- c("Count", "Group")
 #       boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
 #       alightingSMA <- data.frame(SMA(ts(alighting$Count), 3), "Forecasted alighting")
 #       colnames(alightingSMA) <- c("Count", "Group")
 #       alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
-#       
+# 
 #       combinedSMA <- rbind(alightingSMA, boardingSMA)
 #       combinedSMA <- cbind(SMAtimeFrame, combinedSMA)
 #       colnames(combinedSMA) <- c("timeFrame", "Count", "Group")
@@ -1434,7 +1433,7 @@ output$forecastAcrossWeek <- renderPlot({
 #       TS <- ts(c(boarding$Count), frequency = 52, start = c(as.numeric(substring(start1, 0, 4)), as.numeric(startWeek)))
 #       # TS <- decompose(TS)
 #     }
-#     
+# 
 #     plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07), size = 1.5)
 #     plot+
 #       labs(title="", y="", x="")+
@@ -1444,26 +1443,26 @@ output$forecastAcrossWeek <- renderPlot({
 #             panel.border = element_rect(colour = "black", fill=NA, size=1))+
 #       guides(colour = guide_legend(nrow = 2))
 #   })
-#   
+# 
 #   output$plot <- renderPlot({
 #     getPlot()
-#     
+# 
 #   })
-#   
+# 
 #   getNumBoarding <- eventReactive(input$genResult, {
 #     boarding <- isolate(queryList$aggregate(getBoarding()))
 #     count <- sum(boarding$count)
 #   })
-#   
+# 
 #   getNumAlighting <- eventReactive(input$genResult, {
 #     alighting <- isolate(queryList$aggregate(getAlighting()))
 #     count <- sum(alighting$count)
 #   })
-#   
+# 
 #   output$boarding <- renderText({
 #     print(getNumBoarding())
 #   })
-#   
+# 
 #   output$alighting <- renderText({
 #     print(getNumAlighting())
 #   })
