@@ -43,7 +43,7 @@ ui <- dashboardPage(skin = "blue",
                                     # textOutput("display_username"),
                                     "Forecast of the Week",
                                     width = 12,
-                                    plotOutput("forecastAcrossWeek"))
+                                    plotOutput(tags$b("forecastAcrossWeek")))
                                 )
                         ),
                         
