@@ -14,16 +14,13 @@ library(httr)
 library(jsonlite)
 library(ggplot2)
 library(DT)
-# put in AM and PM w date
 library(lubridate)
 library(smooth)
-# %>% pipeline from magrittr
 library(magrittr)
 library(googleAuthR)
 library(shinyjs)
 library(mongolite)
 library(scales)
-# colour gradient in the graph
 library(viridis)
 library(forecast)
 library(TTR)
@@ -45,23 +42,9 @@ library(hydroGOF)
 dyAvgVolTable <- c("busId","busService", "startStop", "endStop", "dyAvgVol", "timestamp")
 avgVolTable <- c("busId", "busService", "startStop", "avgVol", "timestamp")
 responseTable <- c("busId", "busService", "startStop", "endStop", "busCapacity", "timestamp")
-# Shiny app with crowdsourcing form
-
-# databaseName <- "myshinydatabase"
-# databaseUrl <- "mongodb://127.0.0.1:27017"
 
 databaseName <- "trr"
 databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin"
-
-# databaseName <- "trr"
-# databaseUrl <- "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017
-# ,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin"
-
-# dbDyResponses <- mongo(collection = "dynamicResponses",db = databaseName, url = databaseUrl )
-# 
-# dbResponses <- mongo(collection = "responses",db = databaseName, url = databaseUrl )
-# 
-# dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName, url = databaseUrl )
 
 dbAvgVol <- mongo(collection = "avgVol",db = databaseName, url = databaseUrl )
 
@@ -81,28 +64,17 @@ options("googleAuthR.webapp.client_secret" = "SVsY07OxK6yQeaqtEcSIFPsh")
 
 
 #BEN Database
-#Load testRoute <- database with route details
-#routeidx <- mongo(db="trrdb", collection="testRoute", url = "mongodb://localhost")
-
-#routeidx <- mongo(db=databaseName, collection="testRoute", url = databaseUrl)
 routeidx <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "testRoute")
 
 #Load testTime <- database with starting time
-#stime <-mongo(db="trrdb", collection="testTime", url = "mongodb://localhost")
-#stime <-mongo(db=databaseName, collection="testTime", url = databaseUrl)
 stime <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "testTime")
 
 #Load finalstops (second last and last stop)
-#finale <-mongo(db="trrdb", collection="end", url = "mongodb://localhost")
-#finale <-mongo(db=databaseName, collection="end", url = databaseUrl)
 finale <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "end")
 
 #To Save Query DB (ZONGJIE DO NOT TOUCH)
-#queryList <- mongo(db=databaseName, collection="queryList", url= databaseUrl)
-#queryList <- mongo(db=databaseName, collection="queryBase", url= databaseUrl)
 queryList <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
-
-# querydb <- mongo(db="local", collection="queryList")
+hourlyData <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "hourlyData")
 
 server <- function(input, output, session) {
   
@@ -117,7 +89,7 @@ server <- function(input, output, session) {
   output$avgVolBox <- renderValueBox({
     valueBox(
       # get last value of avgVol
-      pdf$avgVol[-1], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
+      pdf$avgVol[-1,][1], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
       color = "yellow"
     )
   })
@@ -128,9 +100,7 @@ server <- function(input, output, session) {
   observeEvent(input$show, {
     showModal(modalDialog(
       title = "Welcome to Route Ranger",
-      googleAuthUI("gauth_login"),
-      # footer = NULL,
-      easyClose = FALSE
+      easyClose = TRUE
     ))
   })
   
@@ -140,10 +110,35 @@ server <- function(input, output, session) {
   )
   
   showModal(modalDialog(
-    title = "Welcome to Route Ranger",
+    title = "Welcome to The Route Ranger",
     googleAuthUI("gauth_login"),
-    # footer = NULL,
-    easyClose = FALSE
+    tags$caption("Log in with your google account to keep track of your travelling history!"),
+    p(
+      tags$b("README"),
+      tags$h4("Dashboard Tab"),
+      tags$b("For Riders:"),
+      tags$li("View estimated bus capacity across day or week and its forecast"),
+      tags$li("Login and logout of the application"),
+      tags$b("For NUS Bus Admin:"),
+      tags$li("Track usage of bus services across different stops across time")
+    ),
+    p(
+      tags$h4("Buses Tab"),
+      tags$b("For Riders:"),
+      tags$li("Get the waiting time and volume of their desired bus service at the current location"),
+      tags$b("For NUS Bus Admin:"),
+      tags$li("Track discrepancy between scheduled bus timings and actual"),
+      tags$li("Track spread of bus volume across time, for each stop")
+      ),
+    p(
+      tags$h4("Bus Stops Tab"),
+      tags$b("For Riders:"),
+      tags$li("Determine the crowdedness of each bus stop at different bus stops"),
+      tags$b("For NUS Bus Admin:"),
+      tags$li("Track usage of bus stops to determine if any bus stop is overused at any point in time"),
+      tags$a(googleAuthUI("gauth_login"))
+    ),
+    easyClose = TRUE
   ))
   
   observe({
@@ -162,7 +157,7 @@ server <- function(input, output, session) {
       need(accessToken(), "not logged in")
     )
     rv$login <- TRUE
-    print("true")
+    # print("true")
     with_shiny(get_user_info, shiny_access_token = accessToken())
   })
   
@@ -189,7 +184,7 @@ server <- function(input, output, session) {
     num <- nrow(query)
     
     data <- query[num,]["stopId"][1,]
-    print("data")
+    # print("data")
     #print(data)
     return(data)
   }
@@ -214,7 +209,7 @@ server <- function(input, output, session) {
   loadService <- function(stopname) {
     enroute <- routeidx$find(query = toString(toJSON(list(stopId=stopname),auto_unbox = TRUE)))
     avail <- list()
-    print(enroute)
+    # print(enroute)
     ctr <- 1
     if (enroute["A1"][1,] > 0 ) { 
       avail[[ctr]] <- "A1"
@@ -247,7 +242,7 @@ server <- function(input, output, session) {
     flag <-  TRUE
     temp <- list()
     df <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=stop,busService = bus), auto_unbox = TRUE)))
-    print(df)
+    # print(df)
     dfAvgVol[[stop]]<-df
     flag <- FALSE
     # extracting the avgVol data END 
@@ -257,7 +252,7 @@ server <- function(input, output, session) {
   }
   
   # Initialize my_data
-  print('Initialised')
+  # print('Initialised')
   dfAvgVol <- initialiseData(busReq,startStop)
 
   #Update every hour update all bus stop dataframes
@@ -291,17 +286,17 @@ server <- function(input, output, session) {
   # Plot the current hours data along with forecast
   output$forecastCurrent <- renderPlot({
     
-    print("Render Plot")
+    # print("Render Plot")
     invalidateLater(1800000, session) # invalidate every 30 minutes
     #print("Update")
     #updateData("A1")
-    print(typeof(dfAvgVol))
+    # print(typeof(dfAvgVol))
     
     #ensure only one day data
     pdf <- dfAvgVol[[startStop]] #dataframe #remember this
     numR <- nrow(pdf)
     ts <-  pdf$timestamp
-    print(ts)
+    # print(ts)
     
     today <- toString(as.Date("2017-10-23 07:00:00 MYT")) #change to Sys.date() once rigged.
     
@@ -365,7 +360,7 @@ output$forecastAcrossWeek <- renderPlot({
 
     #plot using Holt Winter for prediction
     # create timeseries of a week
-    print(dfAvgVol[[startStop]]$avgVol)
+    # print(dfAvgVol[[startStop]]$avgVol)
     avgVolTS <- ts(dfAvgVol[[startStop]]$avgVol,start=1, end=5,frequency = 4)
     # triple exponential - models level, trend, and seasonal components
     hw <- HoltWinters(avgVolTS)
@@ -499,13 +494,13 @@ output$forecastAcrossWeek <- renderPlot({
     
     if(insta > 1380 || insta <435) {
       pastQ <- loadquery()
-      print(pastQ)
+      # print(pastQ)
       
       if(nrow(pastQ)==0) {}
       else{
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-        print(pQ)
-        print("pQ")
+        # print(pQ)
+        # print("pQ")
         
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
@@ -562,17 +557,17 @@ output$forecastAcrossWeek <- renderPlot({
       
       #Start of select data -------------------------------------------------->
       pastQ <- loadquery()
-      print(pastQ)
+      # print(pastQ)
       
       if(nrow(pastQ)==0) {}
       else{
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-        print(pQ)
-        print("pQ")
+        # print(pQ)
+        # print("pQ")
         
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
-        print(movAvg)
+        # print(movAvg)
         df <- data.frame(cbind(pQ,movAvg))
         df <- df[4:nrow(df)-1,]
         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
@@ -717,7 +712,7 @@ output$forecastAcrossWeek <- renderPlot({
       
       queryData <- loadquery() #generate list
       numQuery <- nrow(queryData)
-      print(numQuery)
+      # print(numQuery)
       #print(queryData)
       
       #print(queryData[1,])
@@ -767,17 +762,17 @@ output$forecastAcrossWeek <- renderPlot({
       # dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
       
       pastQ <- loadquery()
-      print(pastQ)
+      # print(pastQ)
       
       if(nrow(pastQ)==0) {}
       else{
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-        print(pQ)
-        print("pQ")
+        # print(pQ)
+        # print("pQ")
         
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
-        print(movAvg)
+        # print(movAvg)
         df <- data.frame(cbind(pQ,movAvg))
         df <- df[4:nrow(df)-1,]
         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
@@ -848,7 +843,7 @@ output$forecastAcrossWeek <- renderPlot({
                                                       busId = getBusId()),
                                                  auto_unbox = TRUE))) #TBC filter include BusId
     insertDyResponse(formData()) #Inserting data into database
-    print("Submitted")
+    # print("Submitted")
   })# End of observeEvent
   
   #Pre-cond: Waits for submit button to be depressed
@@ -1300,7 +1295,7 @@ output$forecastAcrossWeek <- renderPlot({
   
   getBusStopData <- reactive({
     shiny::validate(
-      need(hour(Sys.time()) > 7, message="No data available before 8 am")
+      need(hour(Sys.time() + hours(8)) > 7, message="No data available before 8 am")
     )
     date <- substring(Sys.time(), 0, 10)
     query <- paste0('{"', input$busStop, '.', date, '": {"$exists":true}}')
@@ -1308,7 +1303,7 @@ output$forecastAcrossWeek <- renderPlot({
   })
   
   getMinMaxBoarding <- function(busStop) {
-    hour <- hour(Sys.time()) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
     ls <- character()
@@ -1330,7 +1325,7 @@ output$forecastAcrossWeek <- renderPlot({
   }
   
   getMinMaxAlighting <- function(busStop) {
-    hour <- hour(Sys.time()) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
     ls <- character()
@@ -1352,7 +1347,7 @@ output$forecastAcrossWeek <- renderPlot({
   }
   
   getPlot <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time()) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     busStop <- isolate(input$busStop)
     
@@ -1388,7 +1383,7 @@ output$forecastAcrossWeek <- renderPlot({
     combinedMax <- c(boardingMinMax[[1]], alightingMinMax[[1]])
     combinedMin <- c(boardingMinMax[[2]], alightingMinMax[[2]])
     
-    cbPalette <- c("#0072B2", "#D55E00")
+    cbPalette <- c("#1AA6B7", "#FE424D")
     
     plot <- ggplot(combined, aes(x=Hours, y=Count, group=Group, color=Group))+
       geom_ribbon(aes(ymax=combinedMax, ymin=combinedMin),  fill = "grey", colour = "grey")+
@@ -1412,7 +1407,7 @@ output$forecastAcrossWeek <- renderPlot({
   })
   
   getNumBoarding <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time()) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     data <- isolate(getBusStopData())
     boarding <- data[[1]][[1]][[1]]
@@ -1425,7 +1420,7 @@ output$forecastAcrossWeek <- renderPlot({
   })
   
   getNumAlighting <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time()) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     data <- isolate(getBusStopData())
     alighting <- data[[1]][[1]][[2]]
