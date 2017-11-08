@@ -342,7 +342,7 @@ server <- function(input, output, session) {
     #print(busCapCombi)
     
     ggplot(busCapCombi, aes(x=timestamps,color=Type))+ #, ymin = 1, ymax = 40
-      geom_line(aes(y=avgVol),size=1) +
+      geom_line(aes(y=avgVol),size=1.5) +
       theme_economist() +
       scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
       scale_x_datetime(breaks = date_breaks("2 hours"), labels=date_format("%I%p"))+ #Scales the axis
@@ -380,7 +380,7 @@ output$forecastAcrossWeek <- renderPlot({
 
     ggplot(datasetsCombi,  aes(x=time,  y=value)) +
       geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='#56B4E9') +
-      geom_line(aes(colour=variable), size=1) +
+      geom_line(aes(colour=variable), size=1.5) +
       scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
       scale_x_continuous(breaks = c(1,2,3,4,5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
       xlab('Day of the Week') + ylab('Estimated number of people on the bus') +
