@@ -117,7 +117,7 @@ server <- function(input, output, session) {
   output$avgVolBox <- renderValueBox({
     valueBox(
       # get last value of avgVol
-      dfAvgVol$startStop$avgVol[-1], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
+      pdf$avgVol[-1], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
       color = "yellow"
     )
   })
@@ -350,7 +350,7 @@ server <- function(input, output, session) {
     busCapCombi[[2]] <- strptime(busCapCombi[[2]], "%Y-%m-%d %H:%M:%S")
     #print(busCapCombi)
     
-    ggplot(busCapCombi, aes(x=timestamps,color=bus,group=type))+ #, ymin = 1, ymax = 40
+    ggplot(busCapCombi, aes(x=timestamps,color=type))+ #, ymin = 1, ymax = 40
       geom_line(aes(y=avgVol),size=1) +
       theme_economist() +
       scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
