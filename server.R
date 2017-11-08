@@ -1298,185 +1298,150 @@ output$forecastAcrossWeek <- renderPlot({
   #ENDFunctions saveDB--------------------------------------------------saveDB/Ben
   ###############################################################
   
-  getStartDate <- function(date) {
-    if (input$timeFrame == "Monthly") {
-      paste0(substr(date,0,8), "01", 'T00:00:00Z')
-    } else {
-      paste0(date, 'T00:00:00Z')
-    }
-  }
+  getBusStopData <- reactive({
+    shiny::validate(
+      need(hour(Sys.time()) > 7, message="No data available before 8 am")
+    )
+    date <- substring(Sys.time(), 0, 10)
+    query <- paste0('{"', input$busStop, '.', date, '": {"$exists":true}}')
+    hourlyData$find(query)
+  })
   
-  getEndDate <- function(date) {
-    if (input$timeFrame == "Monthly") {
-      paste0(substr(date,0,8), "31", 'T00:00:00Z')
-    } else {
-      paste0(date, 'T00:00:00Z')
-    }
-  }
-  
-  getBoarding <- reactive({
-    if (input$timeFrame != "Hourly") {
-      shiny::validate(
-        need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
-      )
+  getMinMaxBoarding <- function(busStop) {
+    hour <- hour(Sys.time()) - 7
+    
+    data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
+    ls <- character()
+    for (i in 1:nrow(data)) {
+      tmp <- data[[1]][[i]]
+      ls <- c(ls, tmp[[1]][complete.cases(tmp[[1]])])
     }
     
-    if (input$timeFrame == "Hourly") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"}, "$lt":{"$date":"', getEndDate(input$startDate1+1), '"}}}},
-                      {"$project": {"hour": {"$hour":"$timestamp"}}},
-                      {"$group":{"_id":{"hour":"$hour"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Daily") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
-                      {"$project": {"day": {"$dayOfMonth":"$timestamp"}}},
-                      {"$group":{"_id":{"day":"$day"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Weekly") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
-                      {"$project": {"week": {"$week":"$timestamp"}}},
-                      {"$group":{"_id":{"week":"$week"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Monthly") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
-                      {"$project": {"month": {"$month":"$timestamp"}}},
-                      {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
-      )
+    ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
+    result <- list(rep_len(1, hour), rep_len(100000000, hour))
+    
+    for (j in 1:length(ls)) {
+      for (k in 1:hour) {
+        result[[1]][[k]] <- max(as.numeric(ls[[j]][[k]]), result[[1]][[k]])
+        result[[2]][[k]] <- min(as.numeric(ls[[j]][[k]]), result[[2]][[k]])
+      }
     }
-    })
+    result
+  }
   
-  getAlighting <- reactive({
-    if (input$timeFrame != "Hourly") {
-      shiny::validate(
-        need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
-      )
+  getMinMaxAlighting <- function(busStop) {
+    hour <- hour(Sys.time()) - 7
+    
+    data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
+    ls <- character()
+    for (i in 1:nrow(data)) {
+      tmp <- data[[1]][[i]]
+      ls <- c(ls, tmp[[2]][complete.cases(tmp[[2]])])
     }
     
-    if (input$timeFrame == "Hourly") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1),'"}, "$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}},
-                      {"$project": {"hour": {"$hour":"$timestamp"}}},
-                      {"$group":{"_id":{"hour":"$hour"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Daily") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
-                      {"$project": {"day": {"$dayOfMonth":"$timestamp"}}},
-                      {"$group":{"_id":{"day":"$day"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Weekly") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
-                      {"$project": {"week": {"$week":"$timestamp"}}},
-                      {"$group":{"_id":{"week":"$week"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Monthly") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
-                      {"$project": {"month": {"$month":"$timestamp"}}},
-                      {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
-      )
+    ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
+    result <- list(rep_len(1, hour), rep_len(100000000, hour))
+    
+    for (j in 1:length(ls)) {
+      for (k in 1:hour) {
+        result[[1]][[k]] <- max(as.numeric(ls[[j]][[k]]), result[[1]][[k]])
+        result[[2]][[k]] <- min(as.numeric(ls[[j]][[k]]), result[[2]][[k]])
+      }
     }
-    })
+    result
+  }
   
   getPlot <- eventReactive(input$genResult, {
+    hour <- hour(Sys.time()) - 7
+    
     busStop <- isolate(input$busStop)
-    timeFrame <- isolate(input$timeFrame)
-    start1 <- getStartDate(input$startDate1)
-    start2 <- getStartDate(input$startDate2)
-    end <- getEndDate(input$endDate)
     
-    boarding <- queryList$aggregate(isolate(getBoarding()))
-    alighting <- queryList$aggregate(isolate(getAlighting()))
+    data <- isolate(getBusStopData())
     
-    boarding <- data.frame(boarding)
-    boarding <- cbind(boarding, "Boarding")
-    colnames(boarding) <- c("timeFrame", "Count", "Group")
-    alighting <- data.frame(alighting)
-    alighting <- cbind(alighting, "Alighting")
-    colnames(alighting) <- c("timeFrame", "Count", "Group")
+    boarding <- data[[1]][[1]][[1]]
+    boarding <- substring(boarding, 3, nchar(boarding)-1)
+    boarding <- strsplit(boarding,', ')
+    boarding <- unlist(boarding)
+    boarding <- boarding[1:hour]
+    boarding <- sapply(boarding, {function(x) x = as.numeric(x)})
+    boarding <- data.frame(boarding, "boarding")
+    colnames(boarding) <- c("Count", "Group")
+    alighting <- data[[1]][[1]][[2]]
+    alighting <- substring(alighting, 3, nchar(alighting)-1)
+    alighting <- strsplit(alighting,', ')
+    alighting <- unlist(alighting)
+    alighting <- alighting[1:hour]
+    alighting <- sapply(alighting, {function(x) x = as.numeric(x)})
+    alighting <- data.frame(alighting, "alighting")
+    colnames(alighting) <- c("Count", "Group")
     
-    if (timeFrame == "Hourly") {
-      boarding$timeFrame <- lapply(boarding$timeFrame$hour, {function(x) x = as.character(x)})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(x,":00")})
-      alighting$timeFrame <- lapply(alighting$timeFrame$hour, {function(x) x = as.character(x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(x,":00")})
-    } else if (timeFrame == "Daily") {
-      boarding$timeFrame <- lapply(boarding$timeFrame$day, {function(x) x = as.character(x)})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 8), x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame$day, {function(x) x = as.character(x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 8), x)})
-    } else if (timeFrame == "Weekly") {
-      startWeek <- min(boarding$timeFrame$week)
-      endWeek <- max(boarding$timeFrame$week)
-      boarding$timeFrame <- lapply(boarding$timeFrame$week, {function(x) x = as.character(ymd(paste0(substring(start1, 0, 4), "01-01")) + lubridate::weeks(x))})
-      alighting$timeFrame <- lapply(alighting$timeFrame$week, {function(x) x = as.character(ymd(paste0(substring(start1, 0, 4), "01-01")) + lubridate::weeks(x))})
-    } else if (timeFrame == "Monthly") {
-      boarding$timeFrame <- lapply(boarding$timeFrame$month, {function(x) x = as.character(x)})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      boarding$timeFrame <- lapply(boarding$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})
-      alighting$timeFrame <- lapply(alighting$timeFrame$month, {function(x) x = as.character(x)})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) if (nchar(x) < 2) {x = paste0(0,x)} else {x = x}})
-      alighting$timeFrame <- lapply(alighting$timeFrame, {function(x) x = paste0(substring(start2, 0, 4), "-", x,"-01")})  
-    }
+    startDate <- as.POSIXct(paste0(substring(Sys.time(), 0 ,10), ":00:00:00"))
+    hours <- seq.POSIXt(from = startDate, to = startDate + days(1), by = "hour")
+    hours <- hours[1:hour+7]
+    hours <- sapply(hours, {function(x) x = substring(x, 12,16)})
+    Hours <- c(hours, hours)
     
-    boarding <- boarding[order(unlist(boarding$timeFrame)),]
-    alighting <- alighting[order(unlist(alighting$timeFrame)),]
-    combined <- rbind(alighting, boarding)
-    combined <- combined[with(combined, order(combined$Group, unlist(combined$timeFrame))),]
+    combined <- data.frame(Hours, rbind(boarding, alighting))
     
-    if (timeFrame == "Daily") {
-      boardingSMAtimeFrame <- t(data.frame(tail(boarding$timeFrame, nrow(boarding)-2)))
-      alightingSMAtimeFrame <- t(data.frame(tail(alighting$timeFrame, nrow(alighting)-2)))
-      SMAtimeFrame <- list(rbind(alightingSMAtimeFrame, boardingSMAtimeFrame))
-      SMAtimeFrame <- lapply(SMAtimeFrame[1], {function(x) x = as.POSIXct(x)+days(1)})
-      
-      boardingSMA <- data.frame(SMA(ts(boarding$Count), 3), "Forecasted boarding")
-      colnames(boardingSMA) <- c("Count", "Group")
-      boardingSMA <- boardingSMA[3:nrow(boardingSMA),]
-      alightingSMA <- data.frame(SMA(ts(alighting$Count), 3), "Forecasted alighting")
-      colnames(alightingSMA) <- c("Count", "Group")
-      alightingSMA <- alightingSMA[3:nrow(alightingSMA),]
-      
-      combinedSMA <- rbind(alightingSMA, boardingSMA)
-      combinedSMA <- cbind(SMAtimeFrame, combinedSMA)
-      colnames(combinedSMA) <- c("timeFrame", "Count", "Group")
-      combinedSMA$timeFrame <- sapply(combinedSMA$timeFrame, {function(x) x = as.character(x)})
-      combined <- rbind(combined, combinedSMA)
-    } else if (timeFrame == "Weekly") {
-      TS <- ts(c(boarding$Count), frequency = 52, start = c(as.numeric(substring(start1, 0, 4)), as.numeric(startWeek)))
-      # TS <- decompose(TS)
-    }
+    boardingMinMax <- getMinMaxBoarding(busStop)
+    alightingMinMax <- getMinMaxAlighting(busStop)
+    combinedMax <- c(boardingMinMax[[1]], alightingMinMax[[1]])
+    combinedMin <- c(boardingMinMax[[2]], alightingMinMax[[2]])
     
-    plot <- ggplot(combined, aes(x=unlist(timeFrame), y=Count, group=Group, color=Group))+geom_line(position=position_dodge(width=0.07), size = 1.5)
+    cbPalette <- c("#0072B2", "#D55E00")
+    
+    plot <- ggplot(combined, aes(x=Hours, y=Count, group=Group, color=Group))+
+      geom_ribbon(aes(ymax=combinedMax, ymin=combinedMin),  fill = "grey", colour = "grey")+
+      geom_line(aes(y=Count), size=1.5)+
+      scale_colour_manual(values=cbPalette)
+    
     plot+
-      labs(title="", y="", x="")+
-      theme(panel.background=element_rect(fill="white"), panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1),
-            legend.key.size = unit(0.5, "cm"), legend.position = 'top', legend.background = element_rect(colour = 'black'),
-            panel.border = element_rect(colour = "black", fill=NA, size=1))+
-      guides(colour = guide_legend(nrow = 2))
+      labs(title=paste0('Usage of ', busStop), y="", x="")+
+      theme(panel.background=element_rect(fill="white", colour="lightblue", linetype="solid"),
+            panel.grid.major=element_line(linetype='blank',colour="lightblue"),
+            panel.grid.minor=element_line(linetype='solid',colour="lightblue"),
+            axis.text.x=element_text(angle = 45, hjust = 1, face="bold"),
+            axis.text.y=element_text(face="bold"),
+            title=element_text(face="bold",size=10),
+            legend.position="top"
+      )
   })
   
   output$plot <- renderPlot({
     getPlot()
-    
   })
   
   getNumBoarding <- eventReactive(input$genResult, {
-    boarding <- isolate(queryList$aggregate(getBoarding()))
-    count <- sum(boarding$count)
+    hour <- hour(Sys.time()) - 7
+    
+    data <- isolate(getBusStopData())
+    boarding <- data[[1]][[1]][[1]]
+    boarding <- substring(boarding, 3, nchar(boarding)-1)
+    boarding <- strsplit(boarding,', ')
+    boarding <- unlist(boarding)
+    boarding <- boarding[1:hour]
+    boarding <- sapply(boarding, {function(x) x = as.numeric(x)})
+    sum(boarding)
   })
   
   getNumAlighting <- eventReactive(input$genResult, {
-    alighting <- isolate(queryList$aggregate(getAlighting()))
-    count <- sum(alighting$count)
+    hour <- hour(Sys.time()) - 7
+    
+    data <- isolate(getBusStopData())
+    alighting <- data[[1]][[1]][[2]]
+    alighting <- substring(alighting, 3, nchar(alighting)-1)
+    alighting <- strsplit(alighting,', ')
+    alighting <- unlist(alighting)
+    alighting <- alighting[1:hour]
+    alighting <- sapply(alighting, {function(x) x = as.numeric(x)})
+    sum(alighting)
   })
   
   output$boarding <- renderText({
-    print(getNumBoarding())
+    getNumBoarding()
   })
   
   output$alighting <- renderText({
-    print(getNumAlighting())
+    getNumAlighting()
   })
 }

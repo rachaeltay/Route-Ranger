@@ -93,18 +93,13 @@ ui <- dashboardPage(skin = "blue",
                         
                         tabItem(tabName = "busstop",
                                 box(selectInput("busStop", "Bus Stop", sort(stops), selected="COM2"),
-                                   selectInput("timeFrame", "Time Frame", timeIntervals, selected="Daily"),
-                                   conditionalPanel("input.timeFrame == 'Hourly'", dateInput("startDate1", "Choose a Day")),
-                                   conditionalPanel("input.timeFrame != 'Hourly'", dateInput("startDate2", "Starting Date"), dateInput("endDate", "Ending Date")),
-                                   actionButton("genResult" , "Show Stop Usage!"),
-                                   status = "primary"
+                                    actionButton("genResult" , "Show Stop Usage!"),
+                                    status = "primary"
                                 ),
-                                splitLayout(
-                                  box("Boarding:", textOutput("boarding"), status = "primary"),
-                                  box("Alighting:", textOutput("alighting"), status = "primary")
-                                ),
-                                box(plotOutput("plot"), status = "primary"
-                                )
+                                box("Boarding:", textOutput("boarding"), status = "primary"),
+                                box("Alighting:", textOutput("alighting"), status = "primary"),
+                                box(plotOutput("plot"), status = "primary"),
+                                tableOutput("table")
                         )
                         )
                       )
