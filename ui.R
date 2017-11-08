@@ -41,9 +41,9 @@ ui <- dashboardPage(skin = "blue",
                                   box(
                                     status = 'primary',
                                     # textOutput("display_username"),
-                                    "Forecast of the Week",
+                                    tags$b("Forecast of the Week"),
                                     width = 12,
-                                    plotOutput(tags$b("forecastAcrossWeek")))
+                                    plotOutput("forecastAcrossWeek"))
                                 )
                         ),
                         
