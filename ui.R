@@ -54,37 +54,42 @@ ui <- dashboardPage(skin = "blue",
                                   valueBoxOutput(width = 6,"error")
                                 ),
                                 fluidRow(
-                                  box(selectInput(inputId = "busService", label = "Choose Your Bus", c("A1","A2","D1","D2")),
+                                  box(title = "Query Form", status = "warning", solidHeader = FALSE, collapsible = TRUE,
+                                      width = 4, 
+                                      selectInput(inputId = "busService", label = "Choose Your Bus", c("A1","A2","D1","D2")),
                                       selectInput(inputId = "startStop", label = "Choose Your Starting Bus Stop", choices = allStops),
                                       selectInput(inputId = "endStop", label = "Choose Your Destination Bus Stop", choices = allStops),
                                       actionButton(inputId = "submitQ", label = "Submit Query"),
                                       #actionButton("clear", "Clear"),
                                       
+                                      tags$style(HTML(".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, 
+                                                      .js-irs-0 .irs-bar {background: orange;
+                                                      border-top-color: orange; border-bottom-color: orange;
+                                                      border-left-color: orange; border-right-color: orange;
+                                                      }")),
                                       sliderInput(inputId = 'busCapacity', 
                                                   label = div(style='width:300px;', 
                                                               div(style='float:left;', 'Not Crowded'), 
-                                                              div(style='float:right;', 'Very Crowded')), 
+                                                              div(style='float:right; margin-right: 7px;', 'Very Crowded')), 
                                                   min = 1, max = 3, value = 0, width = '300px'),
                                       actionButton("submitV", "Submit Crowd Level") 
                                       #actionButton("clear", "Clear")
                                       #h2(textOutput("stats"), style = "color: Blue;")
-                                  ),
-                                  box(
+                                      ),
+                                  box(title = "rETA", status = "primary", solidHeader = FALSE, collapsible = TRUE,
+                                      width = 8,
                                       plotOutput("ma")
                                   )
                                 ),
                                 fluidRow(
-                                  # column(2, hr(), actionButton("update", "Update Plot")
-                                  # ),
-                                  # column(4, hr(), textOutput("click")
-                                  # ),
-                                  column(6, actionButton("update", "Update Plot"),
-                                         textOutput("click")
+                                  box(title = "Volume of Incoming Bus", status = "primary", solidHeader = FALSE, collapsible = TRUE,
+                                      plotOutput("graph"),
+                                      actionButton("update", "Update Plot"),
+                                      textOutput("click")
                                   ),
-                                  column(6, selectInput("busId", "Bus ID", choices = 1:62)),
-                                  box(plotOutput("graph")   
-                                  ),
-                                  box(plotOutput("avgVolPerRoute")
+                                  box(title = "Spread of Bus Volume per Stop", status = "primary", solidHeader = FALSE, collapsible = TRUE,
+                                      selectInput("busId", "Trip ID", choices = 1:62),
+                                      plotOutput("avgVolPerRoute")
                                   )
                                   #dataTableOutput("responses", width = 300)
                                 )
@@ -102,5 +107,5 @@ ui <- dashboardPage(skin = "blue",
                                 tableOutput("table")
                         )
                         )
-                      )
+                    )
                     )
