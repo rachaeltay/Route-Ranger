@@ -1313,14 +1313,17 @@ server <- function(input, output, session) {
       tmp <- data[[1]][[i]]
       ls <- c(ls, tmp[[1]][complete.cases(tmp[[1]])])
     }
-  }
-  
-  getEndDate <- function(date) {
-    if (input$timeFrame == "Monthly") {
-      paste0(substr(date,0,8), "31", 'T00:00:00Z')
-    } else {
-      paste0(date, 'T00:00:00Z')
+    
+    ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
+    result <- list(rep_len(1, hour), rep_len(100000000, hour))
+    
+    for (j in 1:length(ls)) {
+      for (k in 1:hour) {
+        result[[1]][[k]] <- max(as.numeric(ls[[j]][[k]]), result[[1]][[k]])
+        result[[2]][[k]] <- min(as.numeric(ls[[j]][[k]]), result[[2]][[k]])
+      }
     }
+    result
   }
   
   getMinMaxAlighting <- function(busStop) {
@@ -1333,58 +1336,17 @@ server <- function(input, output, session) {
       ls <- c(ls, tmp[[2]][complete.cases(tmp[[2]])])
     }
     
-    if (input$timeFrame == "Hourly") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1), '"}, "$lt":{"$date":"', getEndDate(input$startDate1+1), '"}}}},
-                      {"$project": {"hour": {"$hour":"$timestamp"}}},
-                      {"$group":{"_id":{"hour":"$hour"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Daily") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
-                      {"$project": {"day": {"$dayOfMonth":"$timestamp"}}},
-                      {"$group":{"_id":{"day":"$day"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Weekly") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
-                      {"$project": {"week": {"$week":"$timestamp"}}},
-                      {"$group":{"_id":{"week":"$week"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Monthly") {
-      query <- paste0('[{"$match": {"sourceBusStop":"', input$busStop,'", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2), '"}, "$lt":{"$date":"', getEndDate(input$endDate+1), '"}}}},
-                      {"$project": {"month": {"$month":"$timestamp"}}},
-                      {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
-      )
-    }
-  }
-
-  getAlighting <- reactive({
-    if (input$timeFrame != "Hourly") {
-      shiny::validate(
-        need(input$startDate2 < input$endDate, message='Start date must be earlier than end date')
-      )
-    }
+    ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
+    result <- list(rep_len(1, hour), rep_len(100000000, hour))
     
-    if (input$timeFrame == "Hourly") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate1),'"}, "$lt":{"$date":"', getEndDate(input$startDate1+1),'"}}}},
-                      {"$project": {"hour": {"$hour":"$timestamp"}}},
-                      {"$group":{"_id":{"hour":"$hour"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Daily") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
-                      {"$project": {"day": {"$dayOfMonth":"$timestamp"}}},
-                      {"$group":{"_id":{"day":"$day"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Weekly") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
-                      {"$project": {"week": {"$week":"$timestamp"}}},
-                      {"$group":{"_id":{"week":"$week"},"count":{"$sum":1}}}]'
-      )
-    } else if (input$timeFrame == "Monthly") {
-      query <- paste0('[{"$match": {"destinationBusStop":"COM2", "timestamp":{"$gte":{"$date":"', getStartDate(input$startDate2),'"}, "$lt":{"$date":"', getEndDate(input$endDate+1),'"}}}},
-                      {"$project": {"month": {"$month":"$timestamp"}}},
-                      {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
-      )
+    for (j in 1:length(ls)) {
+      for (k in 1:hour) {
+        result[[1]][[k]] <- max(as.numeric(ls[[j]][[k]]), result[[1]][[k]])
+        result[[2]][[k]] <- min(as.numeric(ls[[j]][[k]]), result[[2]][[k]])
+      }
     }
-    })
+    result
+  }
   
   getPlot <- eventReactive(input$genResult, {
     hour <- hour(Sys.time() + hours(8)) - 7
@@ -1423,7 +1385,7 @@ server <- function(input, output, session) {
     combinedMax <- c(boardingMinMax[[1]], alightingMinMax[[1]])
     combinedMin <- c(boardingMinMax[[2]], alightingMinMax[[2]])
     
-    cbPalette <- c("#1AA6B7", "#FE424D")
+    cbPalette <- c("#0072B2", "#D55E00")
     
     plot <- ggplot(combined, aes(x=Hours, y=Count, group=Group, color=Group))+
       geom_ribbon(aes(ymax=combinedMax, ymin=combinedMin),  fill = "grey", colour = "grey")+
@@ -1431,17 +1393,19 @@ server <- function(input, output, session) {
       scale_colour_manual(values=cbPalette)
     
     plot+
-      labs(title="", y="", x="")+
-      theme(panel.background=element_rect(fill="white"), panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(), axis.text.x=element_text(angle = 45, hjust = 1),
-            legend.key.size = unit(0.5, "cm"), legend.position = 'top', legend.background = element_rect(colour = 'black'),
-            panel.border = element_rect(colour = "black", fill=NA, size=1))+
-      guides(colour = guide_legend(nrow = 2))
+      labs(title=paste0('Usage of ', busStop), y="", x="")+
+      theme(panel.background=element_rect(fill="white", colour="lightblue", linetype="solid"),
+            panel.grid.major=element_line(linetype='blank',colour="lightblue"),
+            panel.grid.minor=element_line(linetype='solid',colour="lightblue"),
+            axis.text.x=element_text(angle = 45, hjust = 1, face="bold"),
+            axis.text.y=element_text(face="bold"),
+            title=element_text(face="bold",size=10),
+            legend.position="top"
+      )
   })
   
   output$plot <- renderPlot({
     getPlot()
-    
   })
   
   getNumBoarding <- eventReactive(input$genResult, {
@@ -1471,11 +1435,10 @@ server <- function(input, output, session) {
   })
   
   output$boarding <- renderText({
-    print(getNumBoarding())
+    getNumBoarding()
   })
   
   output$alighting <- renderText({
-    print(getNumAlighting())
+    getNumAlighting()
   })
-  
-    }
+}
