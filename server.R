@@ -318,12 +318,10 @@ server <- function(input, output, session) {
     busCapForecast <- data.frame(busCapForecast)
     
     # add 2 hours since k=3
-    # timeStampForecast <- data.frame(sapply(data$timestamp, function(x) x+2*60*60),stringsAsFactors = FALSE)
     timeStampForecast <- data.frame(data$timestamp,stringsAsFactors = FALSE) #+ 2*60*60 #you cant add it as it is a list of timestamp not just one
     colnames(timeStampForecast) <- c("timestamp")
     #convert column to POSIXct so that ggplot can  scale
     timeStampForecast[[1]] <- strptime(timeStampForecast[[1]], "%Y-%m-%d %H:%M:%S")
-    
     
     avgVolForecast <- cbind(busCapForecast, timeStampForecast,busavail, col='forecast')
     print("AvgForecast")
