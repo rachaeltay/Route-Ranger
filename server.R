@@ -1346,7 +1346,7 @@ output$forecastAcrossWeek <- renderPlot({
                       {"$group":{"_id":{"month":"$month"},"count":{"$sum":1}}}]'
       )
     }
-    })
+  }
 
   getAlighting <- reactive({
     if (input$timeFrame != "Hourly") {
