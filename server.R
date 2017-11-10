@@ -1255,20 +1255,28 @@ server <- function(input, output, session) {
   #ENDFunctions saveDB--------------------------------------------------saveDB/Ben
   ###############################################################
   
+  #pre-conditions: current time is within start and end of bus service
+  #post-conditons: usage of bus stop from 7am of current day to last complete hour is returned
   getBusStopData <- reactive({
-    # shiny::validate(
-    #   need(hour(Sys.time() + hours(8)) > 7, message="No data available before 8 am")
-    # )
+    # ensure that only after bus service has started that there will be data to be shown
+    shiny::validate(
+      #time adjusted for shinyapps timezone
+      need(hour(Sys.time() + hours(8)) > 7, message="No data available before 8 am")
+    )
+    #query database for real_time usage data
     date <- substring(Sys.time(), 0, 10)
     query <- paste0('{"', input$busStop, '.', date, '": {"$exists":true}}')
     hourlyData$find(query)
   })
   
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: interquartile range of num of riders boarding at selected busstop is returned 
   getMinMaxBoarding <- function(busStop) {
-    # hour <- hour(Sys.time() + hours(8)) - 7
-    hour <- 12
-    
+    #time adjusted for shinyapps timezone
+    hour <- hour(Sys.time() + hours(8)) - 7
+    #get historical usage data
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
+    
     ls <- character()
     for (i in 1:nrow(data)) {
       tmp <- data[[1]][[i]]
@@ -1277,7 +1285,7 @@ server <- function(input, output, session) {
     
     ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
     result <- list(rep_len(numeric(), hour), rep_len(numeric(), hour))
-    
+    # for each hour obtain the 25 and 75 percentile
     for (j in 1:hour) {
       tmp <- numeric()
       for (k in 1:length(ls)) {
@@ -1291,11 +1299,14 @@ server <- function(input, output, session) {
     result
   }
   
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: interquartile range of num of riders alighting at selected busstop is returned 
   getMinMaxAlighting <- function(busStop) {
-    # hour <- hour(Sys.time() + hours(8)) - 7
-    hour <- 12
-    
+    #time adjusted for shinyapps timezone
+    hour <- hour(Sys.time() + hours(8)) - 7
+    #get historical usage data
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
+    
     ls <- character()
     for (i in 1:nrow(data)) {
       tmp <- data[[1]][[i]]
@@ -1304,7 +1315,7 @@ server <- function(input, output, session) {
     
     ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
     result <- list(rep_len(numeric(), hour), rep_len(numeric(), hour))
-    
+    # for each hour obtain the 25 and 75 percentile
     for (j in 1:hour) {
       tmp <- numeric()
       for (k in 1:length(ls)) {
@@ -1318,12 +1329,13 @@ server <- function(input, output, session) {
     result
   }
   
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: plot of bus stop usgae is returned
   getPlot <- eventReactive(input$genResult, {
-    # hour <- hour(Sys.time() + hours(8)) - 7
-    hour <- 12
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     busStop <- isolate(input$busStop)
-    
+    #get real-time data
     data <- isolate(getBusStopData())
     
     boarding <- data[[1]][[1]][[1]]
@@ -1349,7 +1361,7 @@ server <- function(input, output, session) {
     colnames(boarding) <- c("hour","Count")
     alighting <- data.frame(hours, alighting)
     colnames(alighting) <- c("Hour", "Count")
-    
+    #get IQR of boaring and alighting at selected bus stop
     boardingMinMax <- data.frame(getMinMaxBoarding(busStop))
     alightingMinMax <- data.frame(getMinMaxAlighting(busStop))
     colnames(boardingMinMax) <- c("Max", "Min")
