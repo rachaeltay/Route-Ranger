@@ -348,8 +348,7 @@ server <- function(input, output, session) {
       geom_line(aes(y=avgVol),size=1.5) +
       theme_economist() +
       scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
-      #scale_x_datetime(breaks = date_breaks("2 hours"), labels=date_format("%I%p", tz="CET"))+ #Scales the axis
-      scale_x_datetime(breaks = date_breaks("2 hours"), date_labels = "%I%p")+ #Scales the axis
+      scale_x_datetime(breaks = date_breaks("2 hours"), labels=date_format("%I%p", tz="CET"))+ #Scales the axis
       labs(x = "Time", y="Estimated number of people on the bus")
   })
   
