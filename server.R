@@ -505,6 +505,13 @@ server <- function(input, output, session) {
       
       if(nrow(pastQ)==0) {}
       else{
+        
+        
+        today <- toString(as.Date("2017-11-10 08:00:00")) #change to Sys.date() once rigged
+        pastQ <- pastQ[grep(today, pastQ["timestamp"]),]
+        print("today")
+        print(pastQ)
+        
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
         # print(pQ)
         # print("pQ")
@@ -567,6 +574,15 @@ server <- function(input, output, session) {
       
       if(nrow(pastQ)==0) {}
       else{
+
+        print("today1")
+        print(pastQ)
+                
+        today <- toString(as.Date("2017-11-11 08:00:00")) #change to Sys.date() once rigged
+        pastQ <- pastQ[grep(today, pastQ$timestamp),]
+        print("today")
+        print(pastQ)
+        
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
         # print(pQ)
         # print("pQ")
@@ -592,7 +608,7 @@ server <- function(input, output, session) {
           ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
           +geom_line(aes(y=V1),color="red")+geom_line(aes(y=pETA),color="blue")+
             theme_economist() + scale_color_economist() +
-            scale_x_datetime(breaks = date_breaks("1 week"))+ #Scales the axis
+            scale_x_datetime(breaks = date_breaks("2 hours"), date_labels = "%I%p")+ #Scales the axis
             labs(x = "Time Of Query", y="Actual ETA")+
             theme(panel.background=element_rect(fill="lightblue"))
         )
