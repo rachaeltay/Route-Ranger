@@ -1,30 +1,22 @@
 library(mongolite)
-library(jsonlite)
 library(DT)
 library(ggplot2)
 library(shiny)
 library(forecast)
 library(TTR)
-library(shiny)
 library(shinythemes)
 library(ggthemes)
 library(shinydashboard)
 library(lubridate)
 library(httr)
 library(jsonlite)
-library(ggplot2)
 library(DT)
-library(lubridate)
 library(smooth)
 library(magrittr)
 library(googleAuthR)
 library(shinyjs)
-library(mongolite)
 library(scales)
 library(viridis)
-library(forecast)
-library(TTR)
-
 library(reshape2)
 library(hydroGOF)
 
@@ -155,7 +147,6 @@ server <- function(input, output, session) {
       need(accessToken(), "not logged in")
     )
     rv$login <- TRUE
-    # print("true")
     with_shiny(get_user_info, shiny_access_token = accessToken())
   })
   
@@ -182,8 +173,6 @@ server <- function(input, output, session) {
     num <- nrow(query)
     
     data <- query[num,]["stopId"][1,]
-    # print("data")
-    #print(data)
     return(data)
   }
   
@@ -192,8 +181,6 @@ server <- function(input, output, session) {
     num <- nrow(query)
     
     data <- query[num,]["bus"][1,]
-    print("data")
-    #print(data)
     return(data)
   }
   
@@ -201,13 +188,11 @@ server <- function(input, output, session) {
     allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
     answer <- list(allStopsAvail["list"][1,]) 
     return(answer)
-    #print(answer)
   }#loadStops
   
   loadService <- function(stopname) {
     enroute <- routeidx$find(query = toString(toJSON(list(stopId=stopname),auto_unbox = TRUE)))
     avail <- list()
-    # print(enroute)
     ctr <- 1
     if (enroute["A1"][1,] > 0 ) { 
       avail[[ctr]] <- "A1"
@@ -242,7 +227,6 @@ server <- function(input, output, session) {
     flag <-  TRUE
     temp <- list()
     df <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=stop,busService = bus), auto_unbox = TRUE)))
-    # print(df)
     dfAvgVol[[stop]]<-df
     flag <- FALSE
     
@@ -251,7 +235,6 @@ server <- function(input, output, session) {
   }
   
   # Initialize my_data
-  # print('Initialised')
   dfAvgVol <- initialiseData(busReq,startStop)
   
   # Update every hour update all bus stop dataframes
@@ -269,7 +252,6 @@ server <- function(input, output, session) {
       if(nrow(a)<1){dfAvgVol[[busStop]] <- list()}
       else{
         dfAvgVol[[busStop]] <- a
-        #print(dfAvgVol)
       }
     }
     
@@ -282,22 +264,14 @@ server <- function(input, output, session) {
   # Plot the current hours data along with forecast
   output$forecastCurrent <- renderPlot({
     
-    # print("Render Plot")
     invalidateLater(1800000, session) # invalidate every 30 minutes
-    #print("Update")
     
     # data <- pdf[grep(today, ts),]
-    #print(data)
-    #View(data)
     #ensure 1day
-    print(dfAvgVol)
-    print(dfAvgVol[[startStop]])
     
     # Ensure only one day data
     # dataframe used to plot
     dayTable <- dfAvgVol[[startStop]]
-    print("dayTable")
-    print(dayTable)
     numR <- nrow(dayTable)
     ts <-  dayTable$timestamp
     
@@ -323,7 +297,6 @@ server <- function(input, output, session) {
     colnames(avgVolTS) <- c("avgVol", "timestamps", "bus","Type")
     
     busCapForecast <- ma(ts(busCapTS),order=3)
-    #print(busCapForecast)
     busCapForecast <- data.frame(busCapForecast)
     
     # add 2 hours since k=3
@@ -335,14 +308,12 @@ server <- function(input, output, session) {
     
     
     avgVolForecast <- cbind(busCapForecast, timeStampForecast,busavail, col='forecast')
-    #print(avgVolForecast)
     colnames(avgVolForecast) <- c("avgVol", "timestamps", "bus","Type")
     avgVolForecast <- avgVolForecast[3:nrow(avgVolForecast)-1,]
     
     busCapCombi <- rbind(avgVolTS, avgVolForecast)
     #convert column to POSIXct so that ggplot can  scale
     busCapCombi[[2]] <- strptime(busCapCombi[[2]], "%Y-%m-%d %H:%M:%S") #Convert timestamp to POSIXct
-    #print(busCapCombi)
     
     ggplot(busCapCombi, aes(x=timestamps,color=Type))+ #, ymin = 1, ymax = 40
       geom_line(aes(y=avgVol),size=1.5) +
@@ -368,7 +339,6 @@ server <- function(input, output, session) {
     
     #plot using Holt Winter for prediction
     # create timeseries of a week
-    # print(dfAvgVol[[startStop]]$avgVol)
     avgVolTS <- ts(dfAvgVol[[startStop]]$avgVol,start=1, end=6,frequency = 65)
     # triple exponential - models level, trend, and seasonal components
     hw <- HoltWinters(avgVolTS, beta=FALSE, gamma=FALSE)
@@ -501,16 +471,12 @@ server <- function(input, output, session) {
     
     if(insta > 1380 || insta <435) {
       pastQ <- loadquery()
-      # print(pastQ)
       
       if(nrow(pastQ)==0) {}
       else{
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-        # print(pQ)
-        # print("pQ")
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
-        print(movAvg)
         df <- data.frame(cbind(pQ,movAvg))
         df <- df[4:nrow(df)-1,]
         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
@@ -563,24 +529,18 @@ server <- function(input, output, session) {
       
       #Start of select data -------------------------------------------------->
       pastQ <- loadquery()
-      # print(pastQ)
       
       if(nrow(pastQ)==0) {}
       else{
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-        # print(pQ)
-        # print("pQ")
         
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
-        # print(movAvg)
         df <- data.frame(cbind(pQ,movAvg))
         df <- df[4:nrow(df)-1,]
         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
         df[[1]] <- strptime(df[[1]], "%Y-%m-%d %H:%M:%S")
         
-        # View(df)
-        # View(df)
         real <- df["rETA"][1:nrow(df),]
         actual <- df["V1"][1:nrow(df),]
         
@@ -718,11 +678,6 @@ server <- function(input, output, session) {
       
       queryData <- loadquery() #generate list
       numQuery <- nrow(queryData)
-      # print(numQuery)
-      #print(queryData)
-      
-      #print(queryData[1,])
-      
       getMins <- function(data) {
         hour <- as.numeric(substr(data,12,13))
         min <- as.numeric(substr(data,15,16))
@@ -764,21 +719,15 @@ server <- function(input, output, session) {
         
     }#end
       #
-      # print(queryData)
       # dataF<- data.frame(cbind(queryData["timestamp"],queryData["rETA"]))
       
       pastQ <- loadquery()
-      # print(pastQ)
       
       if(nrow(pastQ)==0) {}
       else{
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-        # print(pQ)
-        # print("pQ")
-        
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
-        # print(movAvg)
         df <- data.frame(cbind(pQ,movAvg))
         df <- df[4:nrow(df)-1,]
         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
@@ -791,7 +740,6 @@ server <- function(input, output, session) {
         
         error <- mse(actual,real)
         err <- substr(as.character(error),1,4)
-        # #print(typeof(error))
         # output$error <- renderText({
         #   input$submitQ
         #   #realeta = selectdata()
@@ -848,7 +796,6 @@ server <- function(input, output, session) {
                                                       busId = getBusId()),
                                                  auto_unbox = TRUE))) #TBC filter include BusId
     insertDyResponse(formData()) #Inserting data into database
-    print("Submitted")
     shinyjs::disable("submitV") #new
   })# End of observeEvent
   
@@ -898,11 +845,9 @@ server <- function(input, output, session) {
   #Pre-cond: Waits for submitV button to be depressed
   #Post-cond: render plot of avgVol over time/ busstop
   output$graph <- renderPlot({
-    #print("Initialising Plot")
     input$update
     invalidateLater(10000, session) #10000ms = 10s
     dyAvgVol <- loadDyAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
-    #print("Loading Plot")
     if(nrow(dyAvgVol) == 0) {
       buffer()
     }# End of if
@@ -913,8 +858,6 @@ server <- function(input, output, session) {
     }# End of if
     average <- loadDyAvgVol(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))#loadDyAvgVol(filterBusService, filterBusId, date)
     ########## Algorithm to extract sampled avgVol at each busStop for plotting ##########
-    # print("average")
-    # print(average)
     
     # Checks if false data has been inserted to indicate bus has reached Last Stop
     if(average['startStop'][nrow(average)-1,] == "last" &&
@@ -1297,7 +1240,7 @@ server <- function(input, output, session) {
   
   getBusStopData <- reactive({
     shiny::validate(
-      need(hour(Sys.time() + hours(8)) > 7, message="No data available before 8 am")
+      need(hour(Sys.time() + hours(0)) > 7, message="No data available before 8 am")
     )
     date <- substring(Sys.time(), 0, 10)
     query <- paste0('{"', input$busStop, '.', date, '": {"$exists":true}}')
@@ -1305,7 +1248,7 @@ server <- function(input, output, session) {
   })
   
   getMinMaxBoarding <- function(busStop) {
-    hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- hour(Sys.time() + hours(0)) - 7
     
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
     ls <- character()
@@ -1327,7 +1270,7 @@ server <- function(input, output, session) {
   }
   
   getMinMaxAlighting <- function(busStop) {
-    hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- hour(Sys.time() + hours(0)) - 7
     
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
     ls <- character()
@@ -1349,7 +1292,7 @@ server <- function(input, output, session) {
   }
   
   getPlot <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- hour(Sys.time() + hours(0)) - 7
     
     busStop <- isolate(input$busStop)
     
@@ -1361,37 +1304,46 @@ server <- function(input, output, session) {
     boarding <- unlist(boarding)
     boarding <- boarding[1:hour]
     boarding <- sapply(boarding, {function(x) x = as.numeric(x)})
-    boarding <- data.frame(boarding, "boarding")
-    colnames(boarding) <- c("Count", "Group")
+    # boarding <- data.frame(boarding, "boarding")
+    # colnames(boarding) <- c("Count", "Group")
     alighting <- data[[1]][[1]][[2]]
     alighting <- substring(alighting, 3, nchar(alighting)-1)
     alighting <- strsplit(alighting,', ')
     alighting <- unlist(alighting)
     alighting <- alighting[1:hour]
     alighting <- sapply(alighting, {function(x) x = as.numeric(x)})
-    alighting <- data.frame(alighting, "alighting")
-    colnames(alighting) <- c("Count", "Group")
+    # alighting <- data.frame(alighting, "alighting")
+    # colnames(alighting) <- c("Count", "Group")
     
     startDate <- as.POSIXct(paste0(substring(Sys.time(), 0 ,10), ":00:00:00"))
     hours <- seq.POSIXt(from = startDate, to = startDate + days(1), by = "hour")
     hours <- hours[1:hour+7]
     hours <- sapply(hours, {function(x) x = substring(x, 12,16)})
-    Hours <- c(hours, hours)
+    boarding <- data.frame(hours, boarding)
+    alighting <- data.frame(hours, alighting)
     
-    combined <- data.frame(Hours, rbind(boarding, alighting))
+    # Hours <- c(hours, hours)
+    # combined <- data.frame(Hours, rbind(boarding, alighting))
     
-    boardingMinMax <- getMinMaxBoarding(busStop)
-    alightingMinMax <- getMinMaxAlighting(busStop)
-    combinedMax <- c(boardingMinMax[[1]], alightingMinMax[[1]])
-    combinedMin <- c(boardingMinMax[[2]], alightingMinMax[[2]])
+    boardingMinMax <- data.frame(getMinMaxBoarding(busStop))
+    alightingMinMax <- data.frame(getMinMaxAlighting(busStop))
+    colnames(boardingMinMax) <- c("Max", "Min")
+    colnames(alightingMinMax) <- c("Max", "Min")
+    # combinedMax <- c(boardingMinMax[[1]], alightingMinMax[[1]])
+    # combinedMin <- c(boardingMinMax[[2]], alightingMinMax[[2]])
     
     cbPalette <- c("#0072B2", "#D55E00")
+    # c("#1AA6B7", "#FE424D")
     
-    plot <- ggplot(combined, aes(x=Hours, y=Count, group=Group, color=Group))+
-      geom_ribbon(aes(ymax=combinedMax, ymin=combinedMin),  fill = "grey", colour = "grey")+
-      geom_line(aes(y=Count), size=1.5)+
+    # plot <- ggplot(combined, aes(x=Hours, y=Count, group=Group, color=Group))+
+    plot <- ggplot()+
+      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1), fill="red", alpha=0.3)+
+      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1), fill="blue", alpha=0.3)+
+      geom_line(data=boarding, aes(x=hours, y=boarding, group=1), size=0.8)+
+      geom_line(data=alighting, aes(x=hours, y=alighting, group=1), size=0.8)+
+      # geom_line(aes(y=Count), size=1.5)+   
       scale_colour_manual(values=cbPalette)
-    
+     
     plot+
       labs(title=paste0('Usage of ', busStop), y="", x="")+
       theme(panel.background=element_rect(fill="white", colour="lightblue", linetype="solid"),
@@ -1409,7 +1361,7 @@ server <- function(input, output, session) {
   })
   
   getNumBoarding <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- hour(Sys.time() + hours(0)) - 7
     
     data <- isolate(getBusStopData())
     boarding <- data[[1]][[1]][[1]]
@@ -1422,7 +1374,7 @@ server <- function(input, output, session) {
   })
   
   getNumAlighting <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- hour(Sys.time() + hours(0)) - 7
     
     data <- isolate(getBusStopData())
     alighting <- data[[1]][[1]][[2]]

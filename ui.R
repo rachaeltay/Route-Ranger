@@ -97,12 +97,12 @@ ui <- dashboardPage(skin = "blue",
                         
                         
                         tabItem(tabName = "busstop",
-                                box(selectInput("busStop", "Bus Stop", sort(stops), selected="COM2"),
+                                box(selectInput("busStop", "Select a bus stop to see its usage", sort(stops)),
                                     actionButton("genResult" , "Show Stop Usage!"),
                                     status = "primary"
                                 ),
-                                box("Boarding:", textOutput("boarding"), status = "primary"),
-                                box("Alighting:", textOutput("alighting"), status = "primary"),
+                                box("Number of riders boarding:", textOutput("boarding"), status = "primary"),
+                                box("Number of riders alighting:", textOutput("alighting"), status = "primary"),
                                 box(plotOutput("plot"), status = "primary"),
                                 tableOutput("table")
                         )
