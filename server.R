@@ -1,3 +1,4 @@
+library(shiny)
 library(mongolite)
 library(DT)
 library(ggplot2)
@@ -101,8 +102,9 @@ server <- function(input, output, session) {
   
   showModal(modalDialog(
     title = "Welcome to The Route Ranger",
-    tags$caption("Log in with your google account to keep track of your travelling history!"),
+    tags$caption("Log in with your google account to keep track of your travel history!"),
     googleAuthUI("gauth_login"),
+    br(),
     p(
       tags$b("README"),
       tags$h4("Dashboard Tab"),
@@ -1239,16 +1241,17 @@ server <- function(input, output, session) {
   ###############################################################
   
   getBusStopData <- reactive({
-    shiny::validate(
-      need(hour(Sys.time() + hours(0)) > 7, message="No data available before 8 am")
-    )
+    # shiny::validate(
+    #   need(hour(Sys.time() + hours(8)) > 7, message="No data available before 8 am")
+    # )
     date <- substring(Sys.time(), 0, 10)
     query <- paste0('{"', input$busStop, '.', date, '": {"$exists":true}}')
     hourlyData$find(query)
   })
   
   getMinMaxBoarding <- function(busStop) {
-    hour <- hour(Sys.time() + hours(0)) - 7
+    # hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- 12
     
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
     ls <- character()
@@ -1258,19 +1261,24 @@ server <- function(input, output, session) {
     }
     
     ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
-    result <- list(rep_len(1, hour), rep_len(100000000, hour))
+    result <- list(rep_len(numeric(), hour), rep_len(numeric(), hour))
     
-    for (j in 1:length(ls)) {
-      for (k in 1:hour) {
-        result[[1]][[k]] <- max(as.numeric(ls[[j]][[k]]), result[[1]][[k]])
-        result[[2]][[k]] <- min(as.numeric(ls[[j]][[k]]), result[[2]][[k]])
+    for (j in 1:hour) {
+      tmp <- numeric()
+      for (k in 1:length(ls)) {
+        tmp <- c(tmp, as.double(ls[[k]][[j]]))
       }
+      tmp <- sort(tmp)
+      result[[1]][[j]] <- tmp[[0.75*length(tmp)]]
+      result[[2]][[j]] <- tmp[[0.25*length(tmp)]]
     }
+    
     result
   }
   
   getMinMaxAlighting <- function(busStop) {
-    hour <- hour(Sys.time() + hours(0)) - 7
+    # hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- 12
     
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
     ls <- character()
@@ -1280,19 +1288,24 @@ server <- function(input, output, session) {
     }
     
     ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
-    result <- list(rep_len(1, hour), rep_len(100000000, hour))
+    result <- list(rep_len(numeric(), hour), rep_len(numeric(), hour))
     
-    for (j in 1:length(ls)) {
-      for (k in 1:hour) {
-        result[[1]][[k]] <- max(as.numeric(ls[[j]][[k]]), result[[1]][[k]])
-        result[[2]][[k]] <- min(as.numeric(ls[[j]][[k]]), result[[2]][[k]])
+    for (j in 1:hour) {
+      tmp <- numeric()
+      for (k in 1:length(ls)) {
+        tmp <- c(tmp, as.double(ls[[k]][[j]]))
       }
+      tmp <- sort(tmp)
+      result[[1]][[j]] <- tmp[[0.75*length(tmp)]]
+      result[[2]][[j]] <- tmp[[0.25*length(tmp)]]
     }
+    
     result
   }
   
   getPlot <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time() + hours(0)) - 7
+    # hour <- hour(Sys.time() + hours(8)) - 7
+    hour <- 12
     
     busStop <- isolate(input$busStop)
     
@@ -1304,51 +1317,41 @@ server <- function(input, output, session) {
     boarding <- unlist(boarding)
     boarding <- boarding[1:hour]
     boarding <- sapply(boarding, {function(x) x = as.numeric(x)})
-    # boarding <- data.frame(boarding, "boarding")
-    # colnames(boarding) <- c("Count", "Group")
+    
     alighting <- data[[1]][[1]][[2]]
     alighting <- substring(alighting, 3, nchar(alighting)-1)
     alighting <- strsplit(alighting,', ')
     alighting <- unlist(alighting)
     alighting <- alighting[1:hour]
     alighting <- sapply(alighting, {function(x) x = as.numeric(x)})
-    # alighting <- data.frame(alighting, "alighting")
-    # colnames(alighting) <- c("Count", "Group")
     
     startDate <- as.POSIXct(paste0(substring(Sys.time(), 0 ,10), ":00:00:00"))
     hours <- seq.POSIXt(from = startDate, to = startDate + days(1), by = "hour")
     hours <- hours[1:hour+7]
     hours <- sapply(hours, {function(x) x = substring(x, 12,16)})
-    boarding <- data.frame(hours, boarding)
-    alighting <- data.frame(hours, alighting)
     
-    # Hours <- c(hours, hours)
-    # combined <- data.frame(Hours, rbind(boarding, alighting))
+    boarding <- data.frame(hours, boarding)
+    colnames(boarding) <- c("hour","Count")
+    alighting <- data.frame(hours, alighting)
+    colnames(alighting) <- c("Hour", "Count")
     
     boardingMinMax <- data.frame(getMinMaxBoarding(busStop))
     alightingMinMax <- data.frame(getMinMaxAlighting(busStop))
     colnames(boardingMinMax) <- c("Max", "Min")
     colnames(alightingMinMax) <- c("Max", "Min")
-    # combinedMax <- c(boardingMinMax[[1]], alightingMinMax[[1]])
-    # combinedMin <- c(boardingMinMax[[2]], alightingMinMax[[2]])
     
-    cbPalette <- c("#0072B2", "#D55E00")
-    # c("#1AA6B7", "#FE424D")
-    
-    # plot <- ggplot(combined, aes(x=Hours, y=Count, group=Group, color=Group))+
     plot <- ggplot()+
-      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1), fill="red", alpha=0.3)+
-      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1), fill="blue", alpha=0.3)+
-      geom_line(data=boarding, aes(x=hours, y=boarding, group=1), size=0.8)+
-      geom_line(data=alighting, aes(x=hours, y=alighting, group=1), size=0.8)+
-      # geom_line(aes(y=Count), size=1.5)+   
-      scale_colour_manual(values=cbPalette)
-     
+      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="Boarding IQR"), alpha=0.2)+
+      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="Alighting IQR"), alpha=0.2)+
+      geom_line(data=boarding, aes(x=hours, y=Count, group=1, color="seagreen"), size=1.2)+
+      geom_line(data=alighting, aes(x=hours, y=Count, group=1, color="rosybrown"), size=1.2)+
+      scale_colour_manual(name="Type of rider", labels=c("Alighting", "Boarding"), values=c("seagreen", "rosybrown"))
+    
     plot+
       labs(title=paste0('Usage of ', busStop), y="", x="")+
       theme(panel.background=element_rect(fill="white", colour="lightblue", linetype="solid"),
             panel.grid.major=element_line(linetype='blank',colour="lightblue"),
-            panel.grid.minor=element_line(linetype='solid',colour="lightblue"),
+            panel.grid.minor=element_line(linetype='dotted',colour="lightblue"),
             axis.text.x=element_text(angle = 45, hjust = 1, face="bold"),
             axis.text.y=element_text(face="bold"),
             title=element_text(face="bold",size=10),
@@ -1361,7 +1364,7 @@ server <- function(input, output, session) {
   })
   
   getNumBoarding <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time() + hours(0)) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     data <- isolate(getBusStopData())
     boarding <- data[[1]][[1]][[1]]
@@ -1374,7 +1377,7 @@ server <- function(input, output, session) {
   })
   
   getNumAlighting <- eventReactive(input$genResult, {
-    hour <- hour(Sys.time() + hours(0)) - 7
+    hour <- hour(Sys.time() + hours(8)) - 7
     
     data <- isolate(getBusStopData())
     alighting <- data[[1]][[1]][[2]]
