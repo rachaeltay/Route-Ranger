@@ -193,7 +193,7 @@ server <- function(input, output, session) {
   
   output$avgVolBox <- renderValueBox({
     valueBox(
-      # get last value of avgVol
+      # get last value of avgVol in dayTablel
       dayTable[nrow(dayTable),]["avgVol"][1,], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
       color = "yellow"
     )
@@ -244,24 +244,20 @@ server <- function(input, output, session) {
     return(avail)
   }
   
-  # Retrieve most recent query if not default to KR
+  # Retrieve most recent query
   # With dbAvgVolTrend as my db
   startStop <- loadStart()
   busReq <- loadBus()
   busStops <- loadStops()
   
-  
   initialiseData <- function(bus,stop){
-    
+  
     # For every bus stop create a dataframe and populate data
     dfAvgVol <- list()
     
     # Extracting the avgVol data
-    # flag <-  TRUE
-    temp <- list()
     df <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=stop,busService = bus), auto_unbox = TRUE)))
     dfAvgVol[[stop]]<-df
-    # flag <- FALSE
     
     return(dfAvgVol)
   }
@@ -285,9 +281,6 @@ server <- function(input, output, session) {
         dfAvgVol[[busStop]] <- a
       }
     }
-    
-    # Retrieve possibly new starting stop
-    # return(TRUE)
   }
   
   dayTable <- dfAvgVol[[startStop]]
@@ -349,13 +342,13 @@ server <- function(input, output, session) {
   
   output$forecastAcrossWeek <- renderPlot({
 
-    #plot using Holt for prediction
+    # plot using Holt for prediction
     # create timeseries of a week
     avgVolTS <- ts(dfAvgVol[[startStop]]$avgVol,start=1, end=6,frequency = 65)
     # simple Holt exponential
     hw <- HoltWinters(avgVolTS, beta=FALSE, gamma=FALSE)
     # create forecast using predict
-    forecast<-predict(hw,  n.ahead=5,  prediction.interval=T,  level=0.95)
+    forecast<-predict(hw,  n.ahead=10,  prediction.interval=T,  level=0.95)
     
     # seperate hw and forecast into respective dataframes
     forecastData<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
@@ -363,21 +356,18 @@ server <- function(input, output, session) {
     actualData<-data.frame(time=round(time(hw$x),  3),  Actual=c(hw$x))
     
     # create graph
-    # datasets<-merge(actualData,  fittedData,  by='time',  all=TRUE)
     datasets<-merge(fittedData,  forecastData,  all=TRUE,  by='time')
     datasets[is.na(datasets$dev),  ]$dev<-0
     
     datasets$Fitted<-c(rep(NA,  nrow(datasets)-(nrow(forecastData) + nrow(fittedData))),  fittedData$value_fitted,  forecastData$value_forecast)
-    print(datasets)
     
     ggplot(datasets,  aes(x=time,  y=Fitted, colour=Fitted)) +
-      #geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='#56B4E9') +
+      # geom_ribbon(data=datasets, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill='#56B4E9') +
       geom_line(size=1.5) +
       scale_colour_viridis(direction = -1) +
       scale_x_continuous(breaks = c(1.5,2.5,3.5,4.5,5.5), labels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) +
       xlab('Day of the Week') + ylab('Estimated number of people on the bus') +
       theme_economist_white(base_size=10,gray_bg=FALSE)
-    
   })
   
   #Getting Time now to react to queries incoming
