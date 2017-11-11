@@ -44,15 +44,6 @@ dbResponses <- mongo(collection = "responses",db = databaseName ,url = databaseU
 
 dbDyAvgVol <- mongo(collection = "dynamicAvgVol",db = databaseName ,url = databaseUrl)
 
-dbAvgVolTrend <- mongo(collection = "avgVolTrend",db =databaseName, url = databaseUrl)
-
-#Google Authentication
-options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
-                                        "https://www.googleapis.com/auth/userinfo.profile"))
-options("googleAuthR.webapp.client_id" = "682524538636-26vgeiltv82qiapjk63mg79ltrtscovc.apps.googleusercontent.com")
-options("googleAuthR.webapp.client_secret" = "SVsY07OxK6yQeaqtEcSIFPsh")
-
-
 #BEN Database
 routeidx <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "testRoute")
 
@@ -66,24 +57,15 @@ finale <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6
 queryList <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "queryList")
 hourlyData <- mongo(url = "mongodb://soraares:bt3103@therouteranger-shard-00-00-rgv6u.mongodb.net:27017,therouteranger-shard-00-01-rgv6u.mongodb.net:27017,therouteranger-shard-00-02-rgv6u.mongodb.net:27017/test?ssl=true&replicaSet=TheRouteRanger-shard-0&authSource=admin", db = "trr", collection = "hourlyData")
 
+# Rach DB
+dbAvgVolTrend <- mongo(collection = "avgVolTrend",db =databaseName, url = databaseUrl)
+
+#Google Authentication
+options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
+                                        "https://www.googleapis.com/auth/userinfo.profile"))
+options("googleAuthR.webapp.client_id" = "682524538636-26vgeiltv82qiapjk63mg79ltrtscovc.apps.googleusercontent.com")
+options("googleAuthR.webapp.client_secret" = "SVsY07OxK6yQeaqtEcSIFPsh")
 server <- function(input, output, session) {
-  
-  ####################   Dashboard Boxes   ####################
-  output$startStopBox <- renderValueBox({
-    valueBox(
-      startStop, "Recent Stop", icon = icon("bus"),
-      color = "blue"
-    )
-  })
-  
-  # output$avgVolBox <- renderValueBox({
-  #   valueBox(
-  #     ###################################### fix for last value
-  #     # get last value of avgVol
-  #     dayTable$avgVol[[-1]], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
-  #     color = "yellow"
-  #   )
-  # })
   
   ####################   Google Login   ####################
   
@@ -91,11 +73,40 @@ server <- function(input, output, session) {
   observeEvent(input$show, {
     showModal(modalDialog(
       title = "Welcome to Route Ranger",
+      tags$caption("Log in with your google account to keep track of your travel history!"),
+      googleAuthUI("gauth_login"),
+      br(),
+      p(
+        tags$br(),
+        tags$b("README"),
+        tags$h4("Dashboard Tab"),
+        tags$b("For Riders:"),
+        tags$li("View estimated bus capacity across day or week and its forecast"),
+        tags$li("Login and logout of the application"),
+        tags$b("For NUS Bus Admin:"),
+        tags$li("Track usage of bus services across different stops across time")
+      ),
+      p(
+        tags$h4("Buses Tab"),
+        tags$b("For Riders:"),
+        tags$li("Get the waiting time and volume of their desired bus service at the current location"),
+        tags$b("For NUS Bus Admin:"),
+        tags$li("Track discrepancy between scheduled bus timings and actual"),
+        tags$li("Track spread of bus volume across time, for each stop")
+      ),
+      p(
+        tags$h4("Bus Stops Tab"),
+        tags$b("For Riders:"),
+        tags$li("Determine the crowdedness of each bus stop at different bus stops"),
+        tags$b("For NUS Bus Admin:"),
+        tags$li("Track usage of bus stops to determine if any bus stop is overused at any point in time"),
+        tags$a(googleAuthUI("gauth_login"))
+      ),
       easyClose = TRUE
     ))
   })
   
-  ## Global variables needed throughout the app
+  # Global variables needed throughout the app
   rv <- reactiveValues(
     login = FALSE
   )
@@ -140,7 +151,7 @@ server <- function(input, output, session) {
     }
   })
   
-  ## Authentication
+  # Authentication
   accessToken <- callModule(googleAuth, "gauth_login",
                             login_class = "btn btn-info",
                             logout_class = "btn btn-warning")
@@ -153,7 +164,7 @@ server <- function(input, output, session) {
     with_shiny(get_user_info, shiny_access_token = accessToken())
   })
   
-  ## Display user's Google display name after successful login
+  # Display user's Google display name after successful login (can be used for profile in the future)
   output$display_username <- renderText({
     validate(
       need(userDetails(), "getting user details")
@@ -170,7 +181,25 @@ server <- function(input, output, session) {
   })
   
   
+  ####################   Dashboard Boxes   ####################
+  output$startStopBox <- renderValueBox({
+    valueBox(
+      startStop, "Recent Stop", icon = icon("bus"),
+      color = "blue"
+    )
+  })
+  
+  output$avgVolBox <- renderValueBox({
+    valueBox(
+      # get last value of avgVol
+      dayTable[nrow(dayTable),]["avgVol"][1,], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
+      color = "yellow"
+    )
+  })
+  
   ####################   Dashboard Plot   ####################
+  
+  # load most recent query bus stop
   loadStart <- function(data){
     query <- data.frame(queryList$find())
     num <- nrow(query)
@@ -187,11 +216,12 @@ server <- function(input, output, session) {
     return(data)
   }
   
-  loadStops <- function(filter) { #all the bus stops
+  # load all bus stops
+  loadStops <- function(filter) {
     allStopsAvail <- finale$find(query = toString(toJSON(list(key="key"),auto_unbox = TRUE)))
     answer <- list(allStopsAvail["list"][1,]) 
     return(answer)
-  }#loadStops
+  }
   
   loadService <- function(stopname) {
     enroute <- routeidx$find(query = toString(toJSON(list(stopId=stopname),auto_unbox = TRUE)))
@@ -210,10 +240,10 @@ server <- function(input, output, session) {
       avail[[ctr]] <- "D2"}
     
     return(avail)
-  }#end of loadService
+  }
   
   # Retrieve most recent query if not default to KR
-  # With dbAvgVolTrend is my db
+  # With dbAvgVolTrend as my db
   startStop <- loadStart()
   busReq <- loadBus()
   busStops <- loadStops()
@@ -225,21 +255,19 @@ server <- function(input, output, session) {
     dfAvgVol <- list()
     
     # Extracting the avgVol data
-    flag <-  TRUE
+    # flag <-  TRUE
     temp <- list()
     df <- dbAvgVolTrend$find(query = toString(toJSON(list( startStop=stop,busService = bus), auto_unbox = TRUE)))
     dfAvgVol[[stop]]<-df
-    flag <- FALSE
+    # flag <- FALSE
     
     return(dfAvgVol)
-    
   }
   
   # Initialize my_data
   dfAvgVol <- initialiseData(busReq,startStop)
   
-  # Update every hour update all bus stop dataframes
-  
+  # Update every 30 minutes update all bus stop dataframes
   updateData <- function(bus){
     
     for (busStop in unlist(busStops)){
@@ -257,7 +285,7 @@ server <- function(input, output, session) {
     }
     
     # Retrieve possibly new starting stop
-    return(TRUE)
+    # return(TRUE)
   }
   
   dayTable <- dfAvgVol[[startStop]]
@@ -270,7 +298,6 @@ server <- function(input, output, session) {
 
     # Ensure only one day data and create dataframe used to plot
     dayTable <- dfAvgVol[[startStop]]
-    numR <- nrow(dayTable)
     ts <-  dayTable$timestamp
     
     # time across a day
@@ -317,20 +344,10 @@ server <- function(input, output, session) {
       labs(x = "Time", y="Estimated number of people on the bus")
   })
   
-  output$avgVolBox <- renderValueBox({
-    valueBox(
-      ###################################### fix for last value
-      # get last value of avgVol
-      dayTable[nrow(dayTable),]["avgVol"][1,], "Estimated Bus Capacity", icon = icon("adjust", lib = "glyphicon"),
-      color = "yellow"
-    )
-  })
-  
   
   output$forecastAcrossWeek <- renderPlot({
-    # holt winter across a week
-    
-    #plot using Holt Winter for prediction
+
+    #plot using Holt for prediction
     # create timeseries of a week
     avgVolTS <- ts(dfAvgVol[[startStop]]$avgVol,start=1, end=6,frequency = 65)
     # simple Holt exponential
