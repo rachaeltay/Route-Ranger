@@ -65,6 +65,7 @@ options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinf
                                         "https://www.googleapis.com/auth/userinfo.profile"))
 options("googleAuthR.webapp.client_id" = "682524538636-26vgeiltv82qiapjk63mg79ltrtscovc.apps.googleusercontent.com")
 options("googleAuthR.webapp.client_secret" = "SVsY07OxK6yQeaqtEcSIFPsh")
+
 server <- function(input, output, session) {
   
   ####################   Google Login   ####################
@@ -182,6 +183,7 @@ server <- function(input, output, session) {
   
   
   ####################   Dashboard Boxes   ####################
+  
   output$startStopBox <- renderValueBox({
     valueBox(
       startStop, "Recent Stop", icon = icon("bus"),
@@ -339,7 +341,7 @@ server <- function(input, output, session) {
     ggplot(busCapCombi, aes(x=timestamps,color=Type))+ #, ymin = 1, ymax = 40
       geom_line(aes(y=avgVol),size=1.5) +
       theme_economist() +
-      scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#FE424D")) +
+      scale_color_manual(labels = c("Current", "Forecast"), values = c("#1AA6B7", "#f39c12")) +
       scale_x_datetime(breaks = date_breaks("2 hours"), labels=date_format("%I%p", tz="CET"))+ #Scales the axis
       labs(x = "Time", y="Estimated number of people on the bus")
   })
