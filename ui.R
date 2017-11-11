@@ -3,7 +3,6 @@ library(shinydashboard)
 library(shinyjs)
 library(DT)
 
-
 stops <- c('PGP', 'Kent_Ridge_MRT', 'NUH', 'LT29', 'UHall', 'Opp_UHC', 'YIH', 'Central_Library', 'LT13', 'AS7', 'COM2', 'BIZ2', 'PGP_Hse_12', 'PGP_Hse_7')
 timeIntervals <- c("Monthly", "Weekly", "Daily", "Hourly")
 allStops <- c("PGP","Kent_Ridge_MRT","NUH","LT29","UHall","Opp_UHC","YIH","Central_Library","LT13","AS7","COM2",
@@ -97,12 +96,12 @@ ui <- dashboardPage(skin = "blue",
                         
                         
                         tabItem(tabName = "busstop",
-                                box(selectInput("busStop", "Bus Stop", sort(stops), selected="COM2"),
+                                box(selectInput("busStop", "Select a bus stop to see its usage", sort(stops)),
                                     actionButton("genResult" , "Show Stop Usage!"),
                                     status = "primary"
                                 ),
-                                box("Boarding:", textOutput("boarding"), status = "primary"),
-                                box("Alighting:", textOutput("alighting"), status = "primary"),
+                                box("Number of riders boarding:", textOutput("boarding"), status = "primary"),
+                                box("Number of riders alighting:", textOutput("alighting"), status = "primary"),
                                 box(plotOutput("plot"), status = "primary"),
                                 tableOutput("table")
                         )
