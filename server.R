@@ -364,7 +364,7 @@ server <- function(input, output, session) {
       xlab('Day of the Week') + ylab('Estimated number of people on the bus') +
       theme_economist_white(base_size=10,gray_bg=FALSE)
   })
-}
+
 
   #Getting Time now to react to queries incoming
   getMins <- function(data) {
