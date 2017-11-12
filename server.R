@@ -1355,27 +1355,27 @@ server <- function(input, output, session) {
     hours <- sapply(hours, {function(x) x = substring(x, 12,16)})
     
     #convert to data frame and add col names
-    boarding <- data.frame(hours, boarding)
-    colnames(boarding) <- c("hour","Count")
-    alighting <- data.frame(hours, alighting)
-    colnames(alighting) <- c("Hour", "Count")
+    boarding <- data.frame(hours, boarding, "Boarding")
+    colnames(boarding) <- c("hour","Count", "Group")
+    alighting <- data.frame(hours, alighting, "Alighting")
+    colnames(alighting) <- c("Hour", "Count", "Group")
     
     #get 75% interval data
-    boardingMinMax <- data.frame(getMinMaxBoarding(busStop))
-    colnames(boardingMinMax) <- c("Max", "Min")
-    alightingMinMax <- data.frame(getMinMaxAlighting(busStop))
-    colnames(alightingMinMax) <- c("Max", "Min")
+    boardingMinMax <- data.frame(getMinMaxBoarding(busStop), "Boarding")
+    colnames(boardingMinMax) <- c("Max", "Min", "Group")
+    alightingMinMax <- data.frame(getMinMaxAlighting(busStop), "Alighting")
+    colnames(alightingMinMax) <- c("Max", "Min", "Group")
 
     plot <- ggplot()+
       #75% interval 
-      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="darkcyan"), alpha=0.2)+
-      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="darkorange1"), alpha=0.2)+
+      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill=Group), alpha=0.2)+
+      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill=Group), alpha=0.2)+
       #real time data
-      geom_line(data=boarding, aes(x=hours, y=Count, group=1, color="seagreen"), size=1.2)+
-      geom_line(data=alighting, aes(x=hours, y=Count, group=1, color="rosybrown"), size=1.2)+
+      geom_line(data=boarding, aes(x=hours, y=Count, group=1, color=Group), size=1.2)+
+      geom_line(data=alighting, aes(x=hours, y=Count, group=1, color=Group), size=1.2)+
       #legend control
-      scale_fill_manual(name="75% Interval Band", labels=c("Boarding", "Alighting"), values=c("darkcyan", "darkorange1"))+
-      scale_colour_manual(name="Type of rider", labels=c("Boarding", "Alighting"), values=c("rosybrown", "seagreen"))
+      scale_fill_manual(name="75% Interval Band", labels=c("Alighting", "Boarding"), values=c("darkcyan", "darkorange1"))+
+      scale_colour_manual(name="Type of rider", labels=c("Alighting", "Boarding"), values=c("seagreen", "rosybrown"))
     
     plot+
       #title, x-axis and y-axis labels
@@ -1387,7 +1387,8 @@ server <- function(input, output, session) {
             axis.text.y=element_text(face="bold", size=10),
             title=element_text(face="bold", size=13),
             legend.text=element_text(size=10),
-            legend.position="top"
+            legend.position="top",
+            legend.box = "vertical"
       )
   })
   
