@@ -1255,6 +1255,8 @@ server <- function(input, output, session) {
   #ENDFunctions saveDB--------------------------------------------------saveDB/Ben
   ###############################################################
   
+  
+  ##############################BUS STOP TAB(THOMAS)################################
   #pre-conditions: current time is within start and end of bus service
   #post-conditons: usage of bus stop from 7am of current day to last complete hour is returned
   getBusStopData <- reactive({
@@ -1276,13 +1278,13 @@ server <- function(input, output, session) {
     hour <- hour(Sys.time() + hours(8)) - 7
     #get historical usage data
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
-    
+    #remove null entries from each row
     ls <- character()
     for (i in 1:nrow(data)) {
       tmp <- data[[1]][[i]]
       ls <- c(ls, tmp[[1]][complete.cases(tmp[[1]])])
     }
-    
+    #split into lists
     ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
     result <- list(rep_len(numeric(), hour), rep_len(numeric(), hour))
     # for each hour obtain the 25 and 75 percentile
@@ -1295,7 +1297,6 @@ server <- function(input, output, session) {
       result[[1]][[j]] <- tmp[[0.75*length(tmp)]]
       result[[2]][[j]] <- tmp[[0.25*length(tmp)]]
     }
-    
     result
   }
   
@@ -1306,13 +1307,13 @@ server <- function(input, output, session) {
     hour <- hour(Sys.time() + hours(8)) - 7
     #get historical usage data
     data <- hourlyData$find(paste0('{"', busStop, '": {"$exists":true}','}'))
-    
+    #remove null entries from each row
     ls <- character()
     for (i in 1:nrow(data)) {
       tmp <- data[[1]][[i]]
       ls <- c(ls, tmp[[2]][complete.cases(tmp[[2]])])
     }
-    
+    #split into lists
     ls <- sapply(ls, {function(x) x = strsplit(substring(x, 3, nchar(x)-1), ', ')})
     result <- list(rep_len(numeric(), hour), rep_len(numeric(), hour))
     # for each hour obtain the 25 and 75 percentile
@@ -1325,74 +1326,84 @@ server <- function(input, output, session) {
       result[[1]][[j]] <- tmp[[0.75*length(tmp)]]
       result[[2]][[j]] <- tmp[[0.25*length(tmp)]]
     }
-    
     result
   }
   
   #pre-conditions: current time is within start and end of bus service timing
-  #post-conditions: plot of bus stop usgae is returned
+  #post-conditions: plot of bus stop usage is returned
   getPlot <- eventReactive(input$genResult, {
     hour <- hour(Sys.time() + hours(8)) - 7
     
     busStop <- isolate(input$busStop)
     #get real-time data
     data <- isolate(getBusStopData())
-    
+    #process boarding data
     boarding <- data[[1]][[1]][[1]]
     boarding <- substring(boarding, 3, nchar(boarding)-1)
     boarding <- strsplit(boarding,', ')
     boarding <- unlist(boarding)
     boarding <- boarding[1:hour]
     boarding <- sapply(boarding, {function(x) x = as.numeric(x)})
-    
+    #process alighting data
     alighting <- data[[1]][[1]][[2]]
     alighting <- substring(alighting, 3, nchar(alighting)-1)
     alighting <- strsplit(alighting,', ')
     alighting <- unlist(alighting)
     alighting <- alighting[1:hour]
     alighting <- sapply(alighting, {function(x) x = as.numeric(x)})
-    
+    #get x-axis in hours
     startDate <- as.POSIXct(paste0(substring(Sys.time(), 0 ,10), ":00:00:00"))
     hours <- seq.POSIXt(from = startDate, to = startDate + days(1), by = "hour")
     hours <- hours[1:hour+7]
     hours <- sapply(hours, {function(x) x = substring(x, 12,16)})
-    
+    #convert to data frame and add col names
     boarding <- data.frame(hours, boarding)
     colnames(boarding) <- c("hour","Count")
     alighting <- data.frame(hours, alighting)
     colnames(alighting) <- c("Hour", "Count")
-    #get IQR of boaring and alighting at selected bus stop
+    #get 75% interval data
     boardingMinMax <- data.frame(getMinMaxBoarding(busStop))
-    alightingMinMax <- data.frame(getMinMaxAlighting(busStop))
     colnames(boardingMinMax) <- c("Max", "Min")
+    alightingMinMax <- data.frame(getMinMaxAlighting(busStop))
     colnames(alightingMinMax) <- c("Max", "Min")
     
     plot <- ggplot()+
-      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="Boarding IQR"), alpha=0.2)+
-      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="Alighting IQR"), alpha=0.2)+
+      #75% interval 
+      geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="darkcyan"), alpha=0.2)+
+      geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill="darkorange1"), alpha=0.2)+
+      #real time data
       geom_line(data=boarding, aes(x=hours, y=Count, group=1, color="seagreen"), size=1.2)+
       geom_line(data=alighting, aes(x=hours, y=Count, group=1, color="rosybrown"), size=1.2)+
-      scale_colour_manual(name="Type of rider", labels=c("Alighting", "Boarding"), values=c("seagreen", "rosybrown"))
+      #legend control
+      scale_colour_manual(name="Type of rider", labels=c("Alighting", "Boarding"), values=c("seagreen", "rosybrown"))+
+      scale_fill_manual(name="75% Interval Band", labels=c("Alighting", "Boarding"), values=c("darkorange1", "darkcyan"))
     
     plot+
+      #title, x-axis and y-axis labels
       labs(title=paste0('Usage of ', busStop), y="", x="")+
       theme(panel.background=element_rect(fill="white", colour="lightblue", linetype="solid"),
             panel.grid.major=element_line(linetype='blank',colour="lightblue"),
             panel.grid.minor=element_line(linetype='dotted',colour="lightblue"),
-            axis.text.x=element_text(angle = 45, hjust = 1, face="bold"),
-            axis.text.y=element_text(face="bold"),
-            title=element_text(face="bold",size=10),
+            axis.text.x=element_text(angle = 45, hjust = 1, face="bold", size=10),
+            axis.text.y=element_text(face="bold", size=10),
+            title=element_text(face="bold", size=13),
+            legend.text=element_text(size=10),
             legend.position="top"
       )
   })
   
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: plot of bus stop usage is displayed to user
   output$plot <- renderPlot({
     getPlot()
   })
   
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: sum of riders boarding at selected bus stop is returned
   getNumBoarding <- eventReactive(input$genResult, {
+    #time adjusted for shinyapps timezone
     hour <- hour(Sys.time() + hours(8)) - 7
-    
+    #process boarding data to get sum
     data <- isolate(getBusStopData())
     boarding <- data[[1]][[1]][[1]]
     boarding <- substring(boarding, 3, nchar(boarding)-1)
@@ -1403,9 +1414,12 @@ server <- function(input, output, session) {
     sum(boarding)
   })
   
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: sum of riders alighting at selected bus stop is returned
   getNumAlighting <- eventReactive(input$genResult, {
+    #time adjusted for shinyapps timezone
     hour <- hour(Sys.time() + hours(8)) - 7
-    
+    #process alighting data to get sum
     data <- isolate(getBusStopData())
     alighting <- data[[1]][[1]][[2]]
     alighting <- substring(alighting, 3, nchar(alighting)-1)
@@ -1416,11 +1430,24 @@ server <- function(input, output, session) {
     sum(alighting)
   })
   
-  output$boarding <- renderText({
-    getNumBoarding()
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: sum of riders boarding at selected bus stop is displayed
+  output$boarding <- renderInfoBox({
+    infoBox(
+      tags$p("Number of riders boarding", style="text-transform: capitalize; font-weight: bold;"),
+      value=tags$p(getNumBoarding(), style="font-weight: normal; font-size: 90%;"),
+      color="blue", icon=icon("angle-double-up", "fa-lg")
+    )
   })
   
-  output$alighting <- renderText({
-    getNumAlighting()
+  #pre-conditions: current time is within start and end of bus service timing
+  #post-conditions: sum of riders alighting at selected bus stop is displayed
+  output$alighting <- renderInfoBox({
+    infoBox(
+      tags$p("Number of riders alighting", style="text-transform: capitalize; font-weight: bold;"),
+      value=tags$p(getNumAlighting(), style="font-weight: normal; font-size: 90%;"),
+      color="blue", icon=icon("angle-double-down", "fa-lg")
+    )
   })
+  ##############################END BUS STOP TAB#############################
 }

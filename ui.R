@@ -96,14 +96,16 @@ ui <- dashboardPage(skin = "blue",
                         
                         
                         tabItem(tabName = "busstop",
-                                box(selectInput("busStop", "Select a bus stop to see its usage", sort(stops)),
-                                    actionButton("genResult" , "Show Stop Usage!"),
-                                    status = "primary"
-                                ),
-                                box("Number of riders boarding:", textOutput("boarding"), status = "primary"),
-                                box("Number of riders alighting:", textOutput("alighting"), status = "primary"),
-                                box(plotOutput("plot"), status = "primary"),
-                                tableOutput("table")
+                                fluidRow(
+                                  box(selectInput("busStop", tags$label("Select a Bus Stop to View Usage", style="font-size: 15px;"),
+                                                  sort(stops)),
+                                      actionButton("genResult" , "Show Stop Usage!"),
+                                      status = "warning", width=4
+                                  ),
+                                  infoBoxOutput("boarding"),
+                                  infoBoxOutput("alighting"),
+                                  box(plotOutput("plot"), status = "primary", width=8)
+                                )
                         )
                         )
                     )
