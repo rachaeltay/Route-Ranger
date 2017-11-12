@@ -817,7 +817,8 @@ server <- function(input, output, session) {
     dyAvgVolTable$busId <- getBusId()
     dyAvgVolTable$busService <- isolate(input$busService)
     #loadDyResponses(filterBusService, filterBusId, date)
-    dyAvgVolTable$dyAvgVol <- ceiling(aggData(loadDyResponses(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))$busCapacity)/3*40)
+    #dyAvgVolTable$dyAvgVol <- ceiling(aggData(loadDyResponses(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))$busCapacity)/3*40) 
+    dyAvgVolTable$dyAvgVol <- nrow(loadDyResponses(isolate(input$busService), getBusId(), toString(as.Date(Sys.Date())))) #Changed
     dyAvgVolTable$startStop <- isolate(input$startStop)
     dyAvgVolTable$endStop <- isolate(input$endStop)
     dyAvgVolTable$timestamp <- myTimestamp() #ISODate timestamp
@@ -914,7 +915,7 @@ server <- function(input, output, session) {
       ggplot(data=plotAvgVol, aes(x= factor(startStop, levels=unique(startStop)), y = avgVol, ymin = 0, ymax = 40, fill = avgVol)) +
         scale_y_continuous(limit = c(0, 40), expand = c(0,0)) + scale_x_discrete(expand = c(0,0)) +
         geom_bar(stat = "identity") + labs(x = "Bus Stops") +
-        ggtitle(paste0(isolate(input$busService), " (Start Time: ", startTime, ")")) +
+        ggtitle(isolate(input$busService)) +
         theme(axis.text.x = element_text(color="black", size=10, angle=45, vjust = 0.5)) +
         scale_fill_continuous(low="green", high="red") +
         theme(plot.title = element_text(family = "Comic Sans MS", color="#3E87C9", face="bold", size=20)) #changed
