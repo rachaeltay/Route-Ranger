@@ -1374,8 +1374,8 @@ server <- function(input, output, session) {
       geom_line(data=boarding, aes(x=hours, y=Count, group=1, color="seagreen"), size=1.2)+
       geom_line(data=alighting, aes(x=hours, y=Count, group=1, color="rosybrown"), size=1.2)+
       #legend control
-      scale_colour_manual(name="Type of rider", labels=c("Alighting", "Boarding"), values=c("seagreen", "rosybrown"))+
-      scale_fill_manual(name="75% Interval Band", labels=c("Alighting", "Boarding"), values=c("darkorange1", "darkcyan"))
+      scale_fill_manual(name="75% Interval Band", labels=c("Boarding", "Alighting"), values=c("darkcyan", "darkorange1"))+
+      scale_colour_manual(name="Type of rider", labels=c("Boarding", "Alighting"), values=c("rosybrown", "seagreen"))
     
     plot+
       #title, x-axis and y-axis labels
