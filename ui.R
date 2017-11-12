@@ -22,6 +22,14 @@ ui <- dashboardPage(skin = "blue",
                     ),
                     
                     dashboardBody(
+                      tags$head(tags$style(HTML('
+                                                .main-header .logo {
+                                                font-size: 1.5em;
+                                                }
+                                                .skin-blue .main-header .logo:hover {
+                                                          background-color: #f39c12;
+                                                }
+                                                '))),
                       tabItems(
                         # Dashboard content
                         tabItem(tabName = "dashboard",
