@@ -83,7 +83,7 @@ ui <- dashboardPage(skin = "blue",
                                       #actionButton("clear", "Clear")
                                       #h2(textOutput("stats"), style = "color: Blue;")
                                       ),
-                                  box(title = "rETA", status = "primary", solidHeader = FALSE, collapsible = TRUE,
+                                  box(title = "ETA Line Chart", status = "primary", solidHeader = FALSE, collapsible = TRUE,
                                       width = 8,
                                       plotOutput("ma")
                                   )
