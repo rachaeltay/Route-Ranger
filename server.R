@@ -1361,21 +1361,21 @@ server <- function(input, output, session) {
     alighting <- data.frame(hours, alighting, "Alighting")
     colnames(alighting) <- c("Hour", "Count", "Group")
     
-    #get 75% interval data
+    #get 50% interval data
     boardingMinMax <- data.frame(getMinMaxBoarding(busStop), "Boarding")
     colnames(boardingMinMax) <- c("Max", "Min", "Group")
     alightingMinMax <- data.frame(getMinMaxAlighting(busStop), "Alighting")
     colnames(alightingMinMax) <- c("Max", "Min", "Group")
 
     plot <- ggplot()+
-      #75% interval 
+      #50% interval 
       geom_ribbon(data=boardingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill=Group), alpha=0.2)+
       geom_ribbon(data=alightingMinMax, aes(x=hours, ymax=Max, ymin=Min, group=1, fill=Group), alpha=0.2)+
       #real time data
       geom_line(data=boarding, aes(x=hours, y=Count, group=1, color=Group), size=1.2)+
       geom_line(data=alighting, aes(x=hours, y=Count, group=1, color=Group), size=1.2)+
       #legend control
-      scale_fill_manual(name="75% Interval Band", labels=c("Alighting", "Boarding"), values=c("darkcyan", "darkorange1"))+
+      scale_fill_manual(name="50% Interval Band", labels=c("Alighting", "Boarding"), values=c("darkcyan", "darkorange1"))+
       scale_colour_manual(name="Type of rider", labels=c("Alighting", "Boarding"), values=c("seagreen", "rosybrown"))
     
     plot+

@@ -103,7 +103,7 @@ ui <- dashboardPage(skin = "blue",
                                   ),
                                   infoBoxOutput("boarding"),
                                   infoBoxOutput("alighting"),
-                                  box(plotOutput("plot"), status = "primary", width=8)
+                                  box(plotOutput("plot"), status="primary", width=8)
                                 )
                         )
                         )
