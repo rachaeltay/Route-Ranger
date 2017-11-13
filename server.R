@@ -374,8 +374,7 @@ server <- function(input, output, session) {
     return(timequery)
   }#end of getMins
 
-  instant <- Sys.time()
-  insta <- getMins(instant)
+
 
   ####################   Changing Select Inputs by Bus Service  ####################
   #ZJ-------------------------------------------------------------------------------
@@ -445,14 +444,15 @@ server <- function(input, output, session) {
 
   #STARTBEN ------------------------------------------------------->
 
+  instant <- Sys.time() + 8*60*60 #Adjusting to Shinyapps.io Time Zone
+  insta <- getMins(instant)
+  
   observeEvent(input$submitQ,{
     shinyjs::enable("submitV")
     timeN <- function(t) {
-      now <- as.character(Sys.time())
+      now <- as.character(Sys.time()+8*60*60)
       hr <- as.numeric(substr(now,12,13))
-      min <- as.numeric(substr(now,15,16))
-
-      if(min<10) {min <- paste("0",as.character(min))}
+      min <- as.character(substr(now,15,16))
 
       last <- "AM"
       if (hr > 12){
@@ -471,10 +471,10 @@ server <- function(input, output, session) {
       else{
 
 
-        today <- toString(as.Date("2017-11-10 08:00:00")) #change to Sys.date() once rigged
+        today <- toString(as.Date(instant)) #change to Sys.date() once rigged
         pastQ <- pastQ[grep(today, pastQ["timestamp"]),]
-        print("today")
-        print(pastQ)
+        #print("today")
+        #print(pastQ)
 
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
         forecast <- pastQ["rETA"]
@@ -486,10 +486,13 @@ server <- function(input, output, session) {
 
 
         output$ma <- renderPlot(
-          ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
-          +geom_line(aes(y=V1),color="red")+geom_line(aes(y=pETA),color="blue")+
-            theme_economist() + scale_color_economist() +
-            scale_x_datetime(breaks = date_breaks("1 week"))+ #Scales the axis
+          ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA,colour="Actual ETA"))
+          +geom_line(aes(y=V1,colour="Moving Average"))+geom_line(aes(y=pETA,colour="Scheduled ETA"))+
+            scale_colour_manual("", 
+                                breaks = c("Actual ETA", "Moving Average", "Scheduled ETA"),
+                                values = c("black", "red", "blue")) +
+            theme_economist() + 
+            scale_x_datetime(breaks = date_breaks("2 hours"), date_labels = "%I%p")+ #Scales the axis
             labs(x = "Time Of Query", y="Actual ETA")+
             theme(panel.background=element_rect(fill="lightblue"))
         )
@@ -503,14 +506,14 @@ server <- function(input, output, session) {
 
         output$error <- renderValueBox({
           valueBox(
-            paste("Mean Square Error :" ,"0", "min(s)"), "Mean Square Error", icon = icon("times-rectangle"),
+            paste("Mean Square Error :" ,"N.A", "min(s)"), "Between Actual ETA & Scheduled ETA", icon = icon("times-rectangle"),
             color = "blue"
           )
         })
 
         output$ETA <- renderValueBox({
           valueBox(
-            "Not Available", "Waiting Time",
+            "N.A", "Waiting Time",
             color = "blue"
           )
         })
@@ -538,10 +541,10 @@ server <- function(input, output, session) {
         print("today1")
         print(pastQ)
 
-        today <- toString(as.Date("2017-11-11 08:00:00")) #change to Sys.date() once rigged
+        today <- toString(as.Date(instant))
         pastQ <- pastQ[grep(today, pastQ$timestamp),]
-        print("today")
-        print(pastQ)
+        #print("today")
+        #print(pastQ)
 
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
 
@@ -560,13 +563,17 @@ server <- function(input, output, session) {
 
 
         output$ma <- renderPlot(
-          ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA),color="black")
-          +geom_line(aes(y=V1),color="red")+geom_line(aes(y=pETA),color="blue")+
-            theme_economist() + scale_color_economist() +
+          ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA,colour="Actual ETA"))
+          +geom_line(aes(y=V1,colour="Moving Average"))+geom_line(aes(y=pETA,colour="Scheduled ETA"))+
+            scale_colour_manual("", 
+                                breaks = c("Actual ETA", "Moving Average", "Scheduled ETA"),
+                                values = c("black", "red", "blue")) +
+            theme_economist() + 
             scale_x_datetime(breaks = date_breaks("2 hours"), date_labels = "%I%p")+ #Scales the axis
             labs(x = "Time Of Query", y="Actual ETA")+
             theme(panel.background=element_rect(fill="lightblue"))
         )
+        
       }#end of else
       #Start of select data ------
 
@@ -618,7 +625,7 @@ server <- function(input, output, session) {
         queryTable$rETA <- 0
 
         queryTable$destinationbusStop <- isolate(input$endStop)
-        queryTable$timestamp <- Sys.time()
+        queryTable$timestamp <- Sys.time() + 8*60*60
 
 
         insertData <- toJSON(queryTable[c("bus","stopId","busIdx","realIdx","pETA","timeArr","rETA","destinationBusStop","timestamp")],auto_unbox = TRUE)
@@ -631,7 +638,7 @@ server <- function(input, output, session) {
       #send data to db END
 
       timeN <- function(t) {
-        now <- as.character(Sys.time())
+        now <- as.character(Sys.time()+ 8*60*60)
         hr <- as.numeric(substr(now,12,13))
         min <- as.numeric(substr(now,15,16))
         last <- "AM"
@@ -653,7 +660,7 @@ server <- function(input, output, session) {
 
       output$error <- renderValueBox({
         valueBox(
-          paste("Mean Square Error :" ,as.character(err), "min(s)"), "Mean Square Error", icon = icon("times-rectangle"),
+          paste("Mean Square Error :" ,as.character(err), "min(s)"), "Between Actual ETA & Scheduled ETA", icon = icon("times-rectangle"),
           color = "blue"
         )
       })#end of MSE VB
@@ -677,7 +684,7 @@ server <- function(input, output, session) {
 
 
       getActualTime = reactive({
-        dtime <- Sys.time()
+        dtime <- Sys.time() +8*60*60
         dtime <- as.character(dtime)
         anowhr <- as.numeric(substr(dtime,12,13))
         anowmin <- as.numeric(substr(dtime,15,16))
@@ -1183,7 +1190,7 @@ server <- function(input, output, session) {
   #NEW CHANGES
   gettimeOnly = reactive({
     #timeOOnly Manipulation ------------------------------------------------ben
-    datetime <- Sys.time()
+    datetime <- Sys.time()+8*60*60
     datetime <- as.character(datetime)
     tnow<- as.character(substr(datetime,12,13))
     return(as.numeric(tnow))
@@ -1193,7 +1200,7 @@ server <- function(input, output, session) {
 
   getdateOnly = reactive({
     #timeOOnly Manipulation ------------------------------------------------ben
-    datetime <- Sys.time()
+    datetime <- Sys.time()+8*60*60
     datetime <- as.character(datetime)
     dnow<- as.character(substr(datetime,1,10))
     return(dnow)
@@ -1206,7 +1213,7 @@ server <- function(input, output, session) {
 
 
   getTime <- function(){ # Changed - ZJ
-    datetime <- Sys.time()
+    datetime <- Sys.time() + 8*60*60
     datetime <- as.character(datetime)
     nowhr <- as.numeric(substr(datetime,12,13))
     nowmin <- as.numeric(substr(datetime,15,16))
