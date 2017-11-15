@@ -450,7 +450,7 @@ server <- function(input, output, session) {
   observeEvent(input$submitQ,{
     shinyjs::enable("submitV")
     timeN <- function(t) {
-      now <- as.character(Sys.time()+8*60*60)
+      now <- as.character(Sys.time()+8*60*60) 
       hr <- as.numeric(substr(now,12,13))
       min <- as.character(substr(now,15,16))
 
@@ -466,15 +466,15 @@ server <- function(input, output, session) {
 
     if(insta > 1380 || insta <435) {
       pastQ <- loadquery()
-
+      
       if(nrow(pastQ)==0) {}
       else{
 
 
         today <- toString(as.Date(instant)) #change to Sys.date() once rigged
-        pastQ <- pastQ[grep(today, pastQ["timestamp"]),]
+        pastQ <- pastQ[grep(today, pastQ$timestamp),]
         #print("today")
-        #print(pastQ)
+        print(pastQ)
 
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
         forecast <- pastQ["rETA"]
@@ -544,7 +544,7 @@ server <- function(input, output, session) {
         today <- toString(as.Date(instant))
         pastQ <- pastQ[grep(today, pastQ$timestamp),]
         #print("today")
-        #print(pastQ)
+        print(pastQ)
 
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
 
