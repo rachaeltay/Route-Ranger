@@ -464,18 +464,20 @@ server <- function(input, output, session) {
       return(full)
     }
 
+    #IF time falls outside of service timing
     if(insta > 1380 || insta <435) {
       pastQ <- loadquery()
-      
+      #ensure there are queries loaded, else dont load ETA Line Chart
       if(nrow(pastQ)==0) {}
       else{
 
-
+        #Filter today's data only
         today <- toString(as.Date(instant)) #change to Sys.date() once rigged
         pastQ <- pastQ[grep(today, pastQ$timestamp),]
         #print("today")
-        print(pastQ)
+        #print(pastQ)
 
+        #Calculating Moving Average
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
@@ -484,7 +486,7 @@ server <- function(input, output, session) {
         df<- cbind(df["timestamp"],sapply(df["rETA"],function(x) as.numeric(x)),df["V1"],sapply(df["pETA"],function(x) as.numeric(x)))
         df[[1]] <- strptime(df[[1]], "%Y-%m-%d %H:%M:%S")
 
-
+        #Plot the ETA Line Chart
         output$ma <- renderPlot(
           ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA,colour="Actual ETA"))
           +geom_line(aes(y=V1,colour="Moving Average"))+geom_line(aes(y=pETA,colour="Scheduled ETA"))+
@@ -496,21 +498,21 @@ server <- function(input, output, session) {
             labs(x = "Time Of Query", y="Actual ETA")+
             theme(panel.background=element_rect(fill="lightblue"))
         )
-
+        #Output today's Time
         output$todayDate <- renderValueBox({
           valueBox(
             as.character(timeN()), "Time", icon = icon("clock-o"),
             color = "blue"
           )
         })
-
+        #Output Mean Square Error
         output$error <- renderValueBox({
           valueBox(
             paste("Mean Square Error :" ,"N.A", "min(s)"), "Between Actual ETA & Scheduled ETA", icon = icon("times-rectangle"),
             color = "blue"
           )
         })
-
+        #Output ETA
         output$ETA <- renderValueBox({
           valueBox(
             "N.A", "Waiting Time",
@@ -524,6 +526,8 @@ server <- function(input, output, session) {
 
     }#end of IF
 
+    
+    #When time falls inside bus service timing
     else{
 
       getCurrentTime = reactive({
@@ -532,22 +536,24 @@ server <- function(input, output, session) {
         #end of getting timeNow-----------------------------------------------ben
       })
 
-      #Start of select data -------------------------------------------------->
+      #Load All the queries of the input bus service and start stop
       pastQ <- loadquery()
-
+      
+      #ensure queries are loaded, else do not plot graph
       if(nrow(pastQ)==0) {}
       else{
 
-        print("today1")
-        print(pastQ)
+        #print("today1")
+        #print(pastQ)
 
+        #Filter today's data only
         today <- toString(as.Date(instant))
         pastQ <- pastQ[grep(today, pastQ$timestamp),]
-        #print("today")
-        print(pastQ)
+        #print("today2")
+        #print(pastQ)
 
+        #Calculate Moving Average
         pQ<- data.frame(cbind(pastQ["timestamp"],pastQ["rETA"],pastQ["pETA"]))
-
         forecast <- pastQ["rETA"]
         movAvg <- as.data.frame(ma(forecast,order=3))
         df <- data.frame(cbind(pQ,movAvg))
@@ -558,10 +564,11 @@ server <- function(input, output, session) {
         real <- df["rETA"][1:nrow(df),]
         actual <- df["V1"][1:nrow(df),]
 
+        #Calculate MSE
         error <- mse(actual,real)
         err <- substr(as.character(error),1,4)
 
-
+        #Plot ETA Line Graph
         output$ma <- renderPlot(
           ggplot(data=df,aes(x=timestamp,y=V1,color="black",group="black"))+geom_line(aes(y=rETA,colour="Actual ETA"))
           +geom_line(aes(y=V1,colour="Moving Average"))+geom_line(aes(y=pETA,colour="Scheduled ETA"))+
@@ -575,8 +582,8 @@ server <- function(input, output, session) {
         )
         
       }#end of else
-      #Start of select data ------
-
+      
+      #To get the scheduled ETA
       selectdata = reactive({
         ctr <- 0
         realeta <- 0
@@ -611,7 +618,7 @@ server <- function(input, output, session) {
         getBusId() # Changed - ZJ
       }) #end of getBUS -------------------------------------------->
 
-      #for zongjie part
+      #Insert user's query into data base
       queryTable <- c("bus","stopId","busIdx","realIdx","pETA","timeArr","rETA","destinationBusStop","timestamp")
 
       insertQuery <- eventReactive(input$submitQ, {
@@ -650,7 +657,8 @@ server <- function(input, output, session) {
         full <- paste(hr,":",min," ",last)
         return(full)
       }
-
+      
+      #Output today's time
       output$todayDate <- renderValueBox({
         valueBox(
           as.character(timeN()), "Time", icon = icon("clock-o"),
@@ -658,6 +666,7 @@ server <- function(input, output, session) {
         )
       }) #END OF TIME VB
 
+      #Output MSE
       output$error <- renderValueBox({
         valueBox(
           paste("Mean Square Error :" ,as.character(err), "min(s)"), "Between Actual ETA & Scheduled ETA", icon = icon("times-rectangle"),
@@ -665,6 +674,7 @@ server <- function(input, output, session) {
         )
       })#end of MSE VB
 
+      #Output ETA
       output$ETA <- renderValueBox({
         valueBox(
           paste("ETA:", as.character(selectdata()), "min(s)"), "Waiting Time",
